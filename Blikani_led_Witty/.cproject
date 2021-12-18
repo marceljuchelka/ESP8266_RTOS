@@ -23,13 +23,13 @@
 							<builder autoBuildTarget="all" cleanBuildTarget="clean" enableAutoBuild="false" enableCleanBuild="true" enabledIncrementalBuild="true" id="cdt.managedbuild.builder.gnu.cross.1152003731" incrementalBuildTarget="all" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="24" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.608523584" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.c.compiler.option.include.paths.738606592" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;C:\msys32\xtensa-lx106-elf\xtensa-lx106-elf\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\msys32\xtensa-lx106-elf\xtensa-lx106-elf\sys-include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\msys32\home\marcel\ESP8266_RTOS\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\msys32\home\marcel\ESP8266_RTOS\components\freertos\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\msys32\home\marcel\ESP8266_RTOS\components\esp8266\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\msys32\home\marcel\ESP8266_RTOS\components\spi_flash\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\msys32\home\marcel\ESP8266_RTOS\components\freertos\port\esp8266\include\freertos&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;C:\msys32\xtensa-lx106-elf\xtensa-lx106-elf\include&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;C:\msys32\xtensa-lx106-elf\xtensa-lx106-elf\sys-include&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.293664997" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -65,10 +65,10 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
 		<buildTargets>
-			<target name="flash" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+			<target name="flash ESPPORT=com8" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
 				<buildCommand>make</buildCommand>
 				<buildArguments>-j24</buildArguments>
-				<buildTarget>flash ESPPORT=com7</buildTarget>
+				<buildTarget>flash ESPPORT=com8</buildTarget>
 				<stopOnError>true</stopOnError>
 				<useDefaultCommand>true</useDefaultCommand>
 				<runAllBuilders>true</runAllBuilders>

@@ -14,10 +14,13 @@
 #include "driver/gpio.h"
 #include "driver/uart_select.h"
 #include "driver/uart.h"
+#include "driver/adc.h"
 #include "portmacro.h"
 
 #include "FreeRTOSConfig.h"
 #include "..\build\include\sdkconfig.h"
+
+
 
 #define led_pin_mb		GPIO_Pin_2
 #define led_pin_red		GPIO_Pin_15
@@ -31,7 +34,7 @@
 #define led_blue	GPIO_NUM_13
 
 gpio_config_t	gpio_cfg;
-
+adc_config_t	adc_cfg;
 
 
 
@@ -42,16 +45,17 @@ void app_main()
 	gpio_cfg.pin_bit_mask = led_pin_mb | led_pin_red | led_pin_green | led_pin_blue;
 	gpio_cfg.mode = GPIO_MODE_DEF_OUTPUT;
 	gpio_config(&gpio_cfg);
+	adc_cfg.mode = ADC_READ_TOUT_MODE;
 
 //	gpio_set_direction(led_mb, GPIO_MODE_OUTPUT);
 	while(1){
 		uroven^= 1;
 		gpio_set_level(led_green, uroven);
-		vTaskDelay(200/portTICK_PERIOD_MS);
+		vTaskDelay(100/portTICK_PERIOD_MS);
 		gpio_set_level(led_red, uroven);
 		vTaskDelay(200/portTICK_PERIOD_MS);
 		gpio_set_level(led_blue, uroven);
-		vTaskDelay(200/portTICK_PERIOD_MS);
+		vTaskDelay(300/portTICK_PERIOD_MS);
 		gpio_set_level(led_mb, uroven);
 		vTaskDelay(200/portTICK_PERIOD_MS);
 	}

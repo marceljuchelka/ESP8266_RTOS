@@ -42,7 +42,8 @@ main.o: C:/msys32/git/ESP8266_RTOS/Blikani_led_Witty/main/main.c \
  C:/msys32/home/marcel/ESP8266_RTOS/components/esp8266/include/driver/uart.h \
  C:/msys32/home/marcel/ESP8266_RTOS/components/log/include/esp_log.h \
  C:/msys32/home/marcel/ESP8266_RTOS/components/log/include/esp_log_internal.h \
- C:/msys32/home/marcel/ESP8266_RTOS/components/freertos/include/freertos/queue.h
+ C:/msys32/home/marcel/ESP8266_RTOS/components/freertos/include/freertos/queue.h \
+ C:/msys32/home/marcel/ESP8266_RTOS/components/esp8266/include/driver/adc.h
 
 C:/msys32/home/marcel/ESP8266_RTOS/components/freertos/include/freertos/FreeRTOS.h:
 
@@ -131,4 +132,6 @@ C:/msys32/home/marcel/ESP8266_RTOS/components/log/include/esp_log.h:
 C:/msys32/home/marcel/ESP8266_RTOS/components/log/include/esp_log_internal.h:
 
 C:/msys32/home/marcel/ESP8266_RTOS/components/freertos/include/freertos/queue.h:
+
+C:/msys32/home/marcel/ESP8266_RTOS/components/esp8266/include/driver/adc.h:
 /git/ESP8266_RTOS/Blikani_led_Witty/main/./main.c:
