@@ -12,13 +12,13 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "driver/gpio.h"
-#include "driver/uart_select.h"
+#include "driver/i2c.h"
 #include "driver/uart.h"
+#include "esp_log.h"
+#include "esp_system.h"
+#include "esp_err.h"
 #include "driver/adc.h"
-#include "portmacro.h"
 
-#include "FreeRTOSConfig.h"
-#include "..\build\include\sdkconfig.h"
 
 
 
