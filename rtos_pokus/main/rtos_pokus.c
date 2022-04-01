@@ -11,10 +11,59 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
+#include "driver/gpio.h"
+#include "portmacro.h"
+#include "sdkconfig.h"
 
+TaskHandle_t task1hadle;
+TaskHandle_t task2hadle;
+TaskHandle_t task3hadle;
 
+#define MB_LED	GPIO_NUM_2
 
+void vBlink_Led2(void *arg){
+	gpio_config_t gpio_cfg;
+	gpio_cfg.pin_bit_mask = GPIO_Pin_2;
+	gpio_cfg.mode = GPIO_MODE_DEF_OUTPUT;
+	gpio_config(&gpio_cfg);
+	uint8_t uroven=0;
+
+	while(1){
+		gpio_set_level(GPIO_NUM_2, uroven=uroven^1);
+		vTaskDelay(20);
+	}
+}
+
+void vText1(void *arg){
+
+while(1){
+	printf("Text1 \n");
+	vTaskDelay(500/portTICK_PERIOD_MS);
+	}
+}
+
+void vText2(void *arg){
+
+while(1){
+	printf("Text2 \n");
+	vTaskDelay(500/portTICK_PERIOD_MS);
+	}
+}
+
+void vPrintFreeMemory (void *arg){
+while(1){
+	printf("Task1: %d \n", uxTaskGetStackHighWaterMark(task1hadle));
+	printf("Task2: %d \n", uxTaskGetStackHighWaterMark(task2hadle));
+	printf("blikled: %d \n", uxTaskGetStackHighWaterMark(task3hadle));
+	vTaskDelay(1000/portTICK_PERIOD_MS);
+}
+}
 void app_main()
 {
-    printf("Hello world!\n");
+	xTaskCreate(vText1, "text1", 512, NULL, 1, &task1hadle);
+	xTaskCreate(vText2, "text2", 512, NULL, 1, &task2hadle);
+	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 2, NULL);
+	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1, task3hadle);
+
+
 }
