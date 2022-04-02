@@ -50,13 +50,13 @@ while(1){
 	}
 }
 
-void vPrintFreeMemory (void *arg){
-while(1){
-	printf("Task1: %d \n", uxTaskGetStackHighWaterMark(task1hadle));
-	printf("Task2: %d \n", uxTaskGetStackHighWaterMark(task2hadle));
-	printf("blikled: %d \n", uxTaskGetStackHighWaterMark(task3hadle));
-	vTaskDelay(1000/portTICK_PERIOD_MS);
-}
+void vPrintFreeMemory(void *arg) {
+	while (1) {
+		printf("Task1: %d \n", uxTaskGetStackHighWaterMark(task1hadle));
+		printf("Task2: %d \n", uxTaskGetStackHighWaterMark(task2hadle));
+		printf("blikled: %d \n", uxTaskGetStackHighWaterMark(task3hadle));
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+	}
 }
 void app_main()
 {
