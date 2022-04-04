@@ -7,11 +7,14 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 #include <stdio.h>
+#include <string.h>
+#include "time.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "driver/gpio.h"
+#include "sys/_timeval.h"
 #include "portmacro.h"
 #include "sdkconfig.h"
 
@@ -20,6 +23,12 @@ TaskHandle_t task2hadle;
 TaskHandle_t task3hadle;
 
 #define MB_LED	GPIO_NUM_2
+void print_time_promenna(void *arg){
+	 struct timeval now;
+	 time_t now1;
+	 localtime(&now1);
+	printf("promenna ted je %lu \n",now.tv_usec );
+}
 
 void vBlink_Led2(void *arg){
 	gpio_config_t gpio_cfg;
@@ -46,7 +55,8 @@ void vText2(void *arg){
 
 while(1){
 	printf("Text2 \n");
-	vTaskDelay(500/portTICK_PERIOD_MS);
+	vTaskDelay(1500/portTICK_PERIOD_MS);
+	print_time_promenna(0);
 	}
 }
 
