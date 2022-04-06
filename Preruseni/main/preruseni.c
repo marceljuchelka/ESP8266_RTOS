@@ -39,8 +39,7 @@ void vBlink_Led2(void *arg){
 
 	while(1){
 		gpio_set_level(GPIO_NUM_2, uroven=uroven^1);
-		vTaskDelay(1);
-
+		vTaskDelay(20);
 	}
 }
 
