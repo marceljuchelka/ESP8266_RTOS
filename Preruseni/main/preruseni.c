@@ -84,7 +84,7 @@ void vPrintFreeMemory(void *arg) {
 static void isr_handler_IRDA(void *arg) {
 static	int64_t cas_h = 0, cas_l = 0;
 		int64_t vysledek = 0;
-//	xTaskResumeFromISR(IRDAtest_handle);
+//	xTaskResumeFromISR(task1hadle);
 
 	if (!gpio_get_level(GPIO_NUM_12)) {
 		cas_h = esp_timer_get_time();
@@ -113,7 +113,6 @@ static void test_IRDA(void *arg) {
 		xStatus = xQueueReceive(xIrdaQueue, &cas_prijaty, 100);
 		if (xStatus == pdPASS) {
 			printf("pocet ve fronte %d hodnota %lld \n", pocitadlo++, cas_prijaty);
-
 		}
 		else pocitadlo = 0;
 	}
@@ -121,10 +120,11 @@ static void test_IRDA(void *arg) {
 
 void vText1(void *arg){
 while(1){
-	printf("%lld \n",esp_timer_get_time());
-	printf("Text1 \n");
-//	vTaskResume(IRDAtest_handle);
-	vTaskDelay(500/portTICK_PERIOD_MS);
+//	printf("%lld \n",esp_timer_get_time());
+	printf("Text1 spi \n");
+	vTaskSuspend(NULL);
+	printf("Text1 nespi \n");
+//	vTaskDelay(500/portTICK_PERIOD_MS);
 	}
 }
 
@@ -153,15 +153,13 @@ void app_main()
 
 
 	gpio_install_isr_service(0);
-//	if(gpio_isr_handler_add(GPIO_NUM_14, isr_handler_IRDA, NULL) == ESP_OK) printf("handler OK\n");
-//	else printf("handler chyba\n");
 	gpio_isr_handler_add(GPIO_NUM_12, isr_handler_IRDA, NULL);
 	printf("pred task\n");
 
 //	xQueueReset(xIrdaQueue);
 
 
-//	xTaskCreate(vText1, "text1", 2048, NULL, 1, &task1hadle);
+	xTaskCreate(vText1, "text1", 2048, NULL, 1, &task1hadle);
 //	xTaskCreate(vText2, "text2", 512, NULL, 1, &task2hadle);
 //	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 2, NULL);
 //	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1, task3hadle);
