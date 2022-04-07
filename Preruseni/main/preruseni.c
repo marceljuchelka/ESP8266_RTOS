@@ -10,10 +10,15 @@
 #include <string.h>
 //#include "time.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/FreeRTOSConfig.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "freertos/queue.h"
+#include "FreeRTOSConfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "esp_timer.h"
+#include "esp_task_wdt.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
 #include "portmacro.h"
@@ -49,18 +54,9 @@ void vBlink_Led2(void *arg){
 	}
 }
 
-void vText1(void *arg){
 
-while(1){
-	printf("%ld \n",(long)esp_timer_get_time());
-	printf("Text1 \n");
-	vTaskResume(IRDAtest_handle);
-	vTaskDelay(500/portTICK_PERIOD_MS);
-	}
-}
 
 void vText2(void *arg){
-
 while(1){
 	printf("Text2 \n");
 	vTaskDelay(1500/portTICK_PERIOD_MS);
@@ -77,16 +73,17 @@ void vPrintFreeMemory(void *arg) {
 }
 
 /*preruseni od IRDA */
-static void isr_handler_IRDA(void *arg){
-	if(gpio_get_level(GPIO_NUM_14)) {
+static void isr_handler_IRDA(void *arg) {
+//	xTaskResumeFromISR(IRDAtest_handle);
+
+	if (gpio_get_level(GPIO_NUM_14)) {
 		gpio_set_level(GPIO_NUM_16, 1);
 		gpio_set_level(GPIO_NUM_2, 0);
-	}
-	else {
+	} else {
 		gpio_set_level(GPIO_NUM_16, 0);
 		gpio_set_level(GPIO_NUM_2, 1);
 	}
-//	xTaskResumeFromISR(IRDAtest_handle);
+
 }
 
 void test_IRDA(void *arg){
@@ -99,6 +96,16 @@ void test_IRDA(void *arg){
 	}
 
 }
+
+void vText1(void *arg){
+while(1){
+	printf("%lld \n",esp_timer_get_time());
+	printf("Text1 \n");
+//	vTaskResume(IRDAtest_handle);
+	vTaskDelay(500/portTICK_PERIOD_MS);
+	}
+}
+
 void app_main()
 {
 	xIrdaQueue = xQueueCreate(35,sizeof(uint16_t));
@@ -120,9 +127,9 @@ void app_main()
 
 
 	gpio_install_isr_service(0);
-	if(gpio_isr_handler_add(GPIO_NUM_14, isr_handler_IRDA, NULL) == ESP_OK) printf("handler OK\n");
-	else printf("handler chyba\n");
-
+//	if(gpio_isr_handler_add(GPIO_NUM_14, isr_handler_IRDA, NULL) == ESP_OK) printf("handler OK\n");
+//	else printf("handler chyba\n");
+	gpio_isr_handler_add(GPIO_NUM_14, isr_handler_IRDA, NULL);
 	printf("pred task\n");
 
 
@@ -133,6 +140,7 @@ void app_main()
 //	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 2, NULL);
 //	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1, task3hadle);
 	xTaskCreate(test_IRDA, "test_IRDA", 2048, NULL, 1, &IRDAtest_handle);
+
 
 	while(1){
 		vTaskDelay(100);
