@@ -34,7 +34,8 @@ QueueHandle_t xIrdaQueue;
 BaseType_t xHigherPriorityTaskWoken;
 
 #define MB_LED	GPIO_NUM_2
-#define IRDA_pin	GPIO_Pin_14
+#define IRDA_pin	GPIO_Pin_12
+
 
 //void print_time_promenna(void *arg){
 //	 struct timeval now;
@@ -82,15 +83,22 @@ void vPrintFreeMemory(void *arg) {
 /*preruseni od IRDA */
 static void isr_handler_IRDA(void *arg) {
 static	int64_t cas_h = 0, cas_l = 0;
+		int64_t vysledek = 0;
 //	xTaskResumeFromISR(IRDAtest_handle);
 
-	if (gpio_get_level(GPIO_NUM_14)) {
+	if (!gpio_get_level(GPIO_NUM_12)) {
 		cas_h = esp_timer_get_time();
+		if((cas_h - cas_l) > 12000) cas_l = 0;
+		vysledek = cas_h - cas_l;
+		xQueueSendToBackFromISR(xIrdaQueue,&vysledek,NULL);
 		gpio_set_level(GPIO_NUM_16, 1);
 		gpio_set_level(GPIO_NUM_2, 0);
 	} else {
-		cas_l = cas_h - esp_timer_get_time();
-		xQueueSendToBackFromISR(xIrdaQueue,&cas_l,NULL);
+		cas_l = esp_timer_get_time();
+		vysledek = cas_l - cas_h;
+		if(vysledek>9000 && vysledek < 9200) {
+			xQueueSendToBackFromISR(xIrdaQueue,&vysledek,NULL);
+		}
 		gpio_set_level(GPIO_NUM_16, 0);
 		gpio_set_level(GPIO_NUM_2, 1);
 	}
@@ -140,12 +148,14 @@ void app_main()
 	gpio_config(&cfg);
 
 	printf("start\n");
+	printf("*** preruseni ***");
+	vTaskDelay(100);
 
 
 	gpio_install_isr_service(0);
 //	if(gpio_isr_handler_add(GPIO_NUM_14, isr_handler_IRDA, NULL) == ESP_OK) printf("handler OK\n");
 //	else printf("handler chyba\n");
-	gpio_isr_handler_add(GPIO_NUM_14, isr_handler_IRDA, NULL);
+	gpio_isr_handler_add(GPIO_NUM_12, isr_handler_IRDA, NULL);
 	printf("pred task\n");
 
 //	xQueueReset(xIrdaQueue);
