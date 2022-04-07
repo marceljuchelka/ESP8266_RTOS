@@ -24,12 +24,14 @@
 #include "portmacro.h"
 #include "sdkconfig.h"
 
-TaskHandle_t task1hadle;
-TaskHandle_t task2hadle;
-TaskHandle_t task3hadle;
-TaskHandle_t IRDAtest_handle;
-
+static TaskHandle_t task1hadle;
+static TaskHandle_t task2hadle;
+static TaskHandle_t task3hadle;
+static TaskHandle_t IRDAtest_handle;
+SemaphoreHandle_t	xIrda_semafor;
 QueueHandle_t xIrdaQueue;
+
+BaseType_t xHigherPriorityTaskWoken;
 
 #define MB_LED	GPIO_NUM_2
 #define IRDA_pin	GPIO_Pin_14
@@ -72,29 +74,41 @@ void vPrintFreeMemory(void *arg) {
 	}
 }
 
+//typedef struct{
+//	uint8_t	poradi;
+//	uint32_t cas;
+//} T_IRDA_fronta;
+
 /*preruseni od IRDA */
 static void isr_handler_IRDA(void *arg) {
+static	int64_t cas_h = 0, cas_l = 0;
 //	xTaskResumeFromISR(IRDAtest_handle);
 
 	if (gpio_get_level(GPIO_NUM_14)) {
+		cas_h = esp_timer_get_time();
 		gpio_set_level(GPIO_NUM_16, 1);
 		gpio_set_level(GPIO_NUM_2, 0);
 	} else {
+		cas_l = cas_h - esp_timer_get_time();
+		xQueueSendToBackFromISR(xIrdaQueue,&cas_l,NULL);
 		gpio_set_level(GPIO_NUM_16, 0);
 		gpio_set_level(GPIO_NUM_2, 1);
 	}
-
 }
 
-void test_IRDA(void *arg){
-	printf("----------> IRDA OK \n");
-	while(1) {
-		printf("test IRDA spim\n");
-		vTaskSuspend(NULL);
-		printf("test IRDA probuzen\n");
+static void test_IRDA(void *arg) {
+	int64_t	cas_prijaty;
+	BaseType_t xStatus = 0;
+	uint8_t pocitadlo = 0;
+	printf("----------> testIRDA\n");
+	while (1) {
+		xStatus = xQueueReceive(xIrdaQueue, &cas_prijaty, 100);
+		if (xStatus == pdPASS) {
+			printf("pocet ve fronte %d hodnota %lld \n", pocitadlo++, cas_prijaty);
 
+		}
+		else pocitadlo = 0;
 	}
-
 }
 
 void vText1(void *arg){
@@ -108,7 +122,9 @@ while(1){
 
 void app_main()
 {
-	xIrdaQueue = xQueueCreate(35,sizeof(uint16_t));
+	xIrda_semafor = xSemaphoreCreateCounting(40,0);
+	xIrdaQueue = xQueueCreate(40,sizeof(int64_t));
+
 	gpio_config_t cfg;
 	cfg.pin_bit_mask	=	IRDA_pin;
 	cfg.mode			= 	GPIO_MODE_INPUT;
@@ -132,10 +148,10 @@ void app_main()
 	gpio_isr_handler_add(GPIO_NUM_14, isr_handler_IRDA, NULL);
 	printf("pred task\n");
 
+//	xQueueReset(xIrdaQueue);
 
 
-
-	xTaskCreate(vText1, "text1", 2048, NULL, 1, &task1hadle);
+//	xTaskCreate(vText1, "text1", 2048, NULL, 1, &task1hadle);
 //	xTaskCreate(vText2, "text2", 512, NULL, 1, &task2hadle);
 //	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 2, NULL);
 //	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1, task3hadle);
@@ -144,7 +160,8 @@ void app_main()
 
 	while(1){
 		vTaskDelay(100);
-		printf("volna pamet %d \n", esp_get_free_heap_size());
+//		printf("volna pamet %d \n", esp_get_free_heap_size());
+//		printf("hodnota casu %lld \n",esp_timer_get_time());
 	}
 
 
