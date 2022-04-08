@@ -84,7 +84,7 @@ void vPrintFreeMemory(void *arg) {
 static void isr_handler_IRDA(void *arg) {
 static	int64_t cas_h = 0, cas_l = 0;
 		int64_t vysledek = 0;
-//	xTaskResumeFromISR(task1hadle);
+	//	xTaskResumeFromISR(task1hadle);
 
 	if (!gpio_get_level(GPIO_NUM_12)) {
 		cas_h = esp_timer_get_time();
@@ -152,8 +152,7 @@ void app_main()
 	vTaskDelay(100);
 
 
-	gpio_install_isr_service(0);
-	gpio_isr_handler_add(GPIO_NUM_12, isr_handler_IRDA, NULL);
+
 	printf("pred task\n");
 
 //	xQueueReset(xIrdaQueue);
@@ -165,6 +164,8 @@ void app_main()
 //	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1, task3hadle);
 	xTaskCreate(test_IRDA, "test_IRDA", 2048, NULL, 1, &IRDAtest_handle);
 
+	gpio_install_isr_service(0);
+	gpio_isr_handler_add(GPIO_NUM_12, isr_handler_IRDA, NULL);
 
 	while(1){
 		vTaskDelay(100);
