@@ -23,7 +23,7 @@ static TaskHandle_t task1hadle;
 static TaskHandle_t task2hadle;
 //static TaskHandle_t task3hadle;
 static TaskHandle_t IrDecHandle;
-SemaphoreHandle_t	xIrda_semafor;
+
 QueueHandle_t xIrdaQueue;
 QueueHandle_t xIrRecQueue;
 
@@ -86,13 +86,13 @@ static	int64_t cas_h = 0, cas_l = 0;
 		cas_h = esp_timer_get_time();
 		if((cas_h - cas_l) > 12000) cas_l = 0;
 		vysledek = cas_h - cas_l;
-		if(vysledek > 490 && vysledek < 1700) xQueueSendToBackFromISR(xIrdaQueue,&vysledek,NULL);
+		if(vysledek > 400 && vysledek < 1800) xQueueSendToBackFromISR(xIrdaQueue,&vysledek,NULL);
 		gpio_set_level(GPIO_NUM_16, 1);
 		gpio_set_level(GPIO_NUM_2, 0);
 	} else {
 		cas_l = esp_timer_get_time();
 		vysledek = cas_l - cas_h;
-		if(vysledek>9000 && vysledek < 9200) {
+		if(vysledek>8800 && vysledek < 9400) {
 			xQueueSendToBackFromISR(xIrdaQueue,&vysledek,NULL);
 			xTaskResumeFromISR(IrDecHandle);
 		}
@@ -103,75 +103,85 @@ static	int64_t cas_h = 0, cas_l = 0;
 
 static void vIrDecode(void *arg) {
 	uint8_t Key_button = 0;
-	int16_t	cas_prijaty;
-	uint32_t key_val=0;
+	int16_t cas_prijaty;
+	uint32_t key_val = 0;
 	uint8_t pocitadlo = 0;
 	while (1) {
-		xQueueReceive(xIrdaQueue, &cas_prijaty, 1);
-		if(cas_prijaty >9000 && cas_prijaty < 9200) {
+		if (xQueueReceive(xIrdaQueue, &cas_prijaty, 1)) {
+			if (cas_prijaty > 8800 && cas_prijaty < 9400) {
+				pocitadlo = 0;
+				key_val = 0;
+			}
+			if (cas_prijaty > 400 && cas_prijaty < 750)
+				key_val = (key_val + 0) << 1;
+			if (cas_prijaty > 1500 && cas_prijaty < 1800)
+				key_val = (key_val + 1) << 1;
+//			printf("poradi: %d  cas: %d\n", pocitadlo, cas_prijaty);
+			pocitadlo++;
+			if (pocitadlo == 32) {
+				switch (key_val) {
+				case 0xff9866:		//0
+					Key_button = 0;
+					break;
+				case 0xffa25c:		//1
+					Key_button = 1;
+					break;
+				case 0xff629c:		//2
+					Key_button = 2;
+					break;
+				case 0xffe21c:		//3
+					Key_button = 3;
+					break;
+				case 0xff22dc:		//4
+					Key_button = 4;
+					break;
+				case 0xff02fc:		//5
+					Key_button = 5;
+					break;
+				case 0xffc23c:		//6
+					Key_button = 6;
+					break;
+				case 0xffe01e:		//7
+					Key_button = 7;
+					break;
+				case 0xffa856:		//8
+					Key_button = 8;
+					break;
+				case 0xff906e:		//9
+					Key_button = 9;
+					break;
+				case 0xff6896:		//* 	10
+					Key_button = 10;
+					break;
+				case 0xffb04e:		//#		11
+					Key_button = 11;
+					break;
+				case 0xff10ee:		//<		12
+					Key_button = 12;
+					break;
+				case 0xff5aa4:		//>		13
+					Key_button = 13;
+					break;
+				case 0xff18e6:		//^		14
+					Key_button = 14;
+					break;
+				case 0xff4ab4:
+					Key_button = 15;	//v		15
+					break;
+				case 0xff38c6:
+					Key_button = 16;	//ok	11
+					break;
+				}
+//				printf("hodnotaIR v hex: %x button   %d\n", key_val, Key_button);
+
+				xQueueSendToBack(xIrRecQueue, &Key_button, 10);
+			vTaskSuspend(NULL);
+			}
+		}
+		else {
 			pocitadlo = 0;
 			key_val = 0;
 		}
-
-		if (pocitadlo++ == 32) {
-			switch (key_val) {
-			case 0xff9866:		//0
-				Key_button = 0;
-				break;
-			case 0xffa25c:		//1
-				Key_button = 1;
-				break;
-			case 0xff629c:		//2
-				Key_button = 2;
-				break;
-			case 0xffe21c:		//3
-				Key_button = 3;
-				break;
-			case 0xff22dc:		//4
-				Key_button = 4;
-				break;
-			case 0xff02fc:		//5
-				Key_button = 5;
-				break;
-			case 0xffc23c:		//6
-				Key_button = 6;
-				break;
-			case 0xffe01e:		//7
-				Key_button = 7;
-				break;
-			case 0xffa856:		//8
-				Key_button = 8;
-				break;
-			case 0xff906e:		//9
-				Key_button = 9;
-				break;
-			case 0xff6896:		//* 	10
-				Key_button = 10;
-				break;
-			case 0xffb04e:		//#		11
-				Key_button = 11;
-				break;
-			case 0xff10ee:		//<		12
-				Key_button = 12;
-				break;
-			case 0xff5aa4:		//>		13
-				Key_button = 13;
-				break;
-			case 0xff18e6:		//^		14
-				Key_button = 14;
-				break;
-			case 0xff4ab4:
-				Key_button = 15;	//v		15
-				break;
-			case 0xff38c6:
-				Key_button = 16;	//ok	11
-				break;
-			}
-			xQueueSendToBack(xIrRecQueue,&Key_button,10);
-			vTaskSuspend(NULL);
-		}
-		if(cas_prijaty >490 && cas_prijaty < 600) key_val = (key_val+0)<<1;
-		if(cas_prijaty >1500 && cas_prijaty < 1700)  key_val = (key_val+1)<<1;
 	}
 }
 
@@ -191,8 +201,8 @@ while(1){
 
 void app_main()
 {
-	xIrda_semafor = xSemaphoreCreateCounting(40,0);
-	xIrdaQueue 	= xQueueCreate(30,sizeof(int16_t));
+
+	xIrdaQueue 	= xQueueCreate(64,sizeof(int16_t));
 	xIrRecQueue = xQueueCreate(5,sizeof(uint8_t));
 
 	gpio_config_t cfg;
@@ -210,7 +220,7 @@ void app_main()
 	gpio_config(&cfg);
 
 	printf("start\n");
-	printf("*** preruseni ***");
+	printf("*** preruseni ***\n");
 	vTaskDelay(100);
 
 
@@ -224,7 +234,7 @@ void app_main()
 //	xTaskCreate(vText2, "text2", 512, NULL, 1, &task2hadle);
 //	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 2, NULL);
 //	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1, task3hadle);
-	xTaskCreate(vIrDecode, "IRDA dekodovani", 512, NULL, 1, &IrDecHandle);
+	xTaskCreate(vIrDecode, "IRDA dekodovani", 2048, NULL, 1, &IrDecHandle);
 
 	gpio_install_isr_service(0);
 	gpio_isr_handler_add(GPIO_NUM_12, isr_handler_IRDA, NULL);
