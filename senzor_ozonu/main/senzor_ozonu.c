@@ -18,7 +18,8 @@
 #include "driver/uart.h"
 #include "portmacro.h"
 #include "sdkconfig.h"
-
+#include "../components/ADS_1115/ads_1115.h"
+//#include "components/ULP/ulp.h"
 #define MB_LED	GPIO_NUM_2
 
 TaskHandle_t	BlikLedMBHandle;
@@ -48,10 +49,14 @@ while(1){
 }
 
 void vPrintFreeMemory(void *arg) {
+	uint8_t MUX = 1;
 	while (1) {
 		printf("BlikLedMBHandle: %d \n", uxTaskGetStackHighWaterMark(BlikLedMBHandle));
 		printf("vPrintFreeMemory: %d \n", uxTaskGetStackHighWaterMark(NULL));
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		ads_init();
+//		printf("MUX %d   hodnota: %f \n", MUX, ads_U_input_single(MUX));
+//		if(++MUX == 5)MUX = 1;
+		vTaskDelay(300 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -61,7 +66,8 @@ void app_main()
 {
 	printf("start\n");
 	printf("*** senzor ozonu ***\n");
-	vTaskDelay(400);
+	vTaskDelay(100);
+	my_i2c_config();
 
 	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
 	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1,&BlikLedMBHandle );

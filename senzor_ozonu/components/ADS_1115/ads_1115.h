@@ -8,6 +8,8 @@
 #ifndef ADS_1115_H_
 #define ADS_ADS_1115_H_
 
+#define I2C_SCL_PIN         	5               /*!< gpio number for I2C master clock */
+#define I2C_SDA_PIN        		4               /*!< gpio number for I2C master data  */
 
 //adresy ads115
 #define ads_i2c_add_0x90		0x90
@@ -108,6 +110,7 @@ This bit controls the operating mode.
 
 
 void ads_init();
+void my_i2c_config();
 void ads_set_gain(uint8_t gain);
 //void ads_read_config_register();
 int8_t ads_test_address(uint8_t adresa);
