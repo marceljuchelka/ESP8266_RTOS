@@ -35,14 +35,67 @@ void my_i2c_config(){
 	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
 }
 
+uint16_t ads_read_register(uint8_t APR){								//precti register
+	uint8_t buffer[3];
+	uint8_t *buf = &buffer[0];
+
+	esp_err_t ret;
+	i2c_cmd_handle_t cmd;
+	cmd = i2c_cmd_link_create();
+	i2c_master_start(cmd);
+	i2c_master_write_byte(cmd, ads_i2c_address | I2C_MASTER_WRITE, I2C_MASTER_NACK);
+	i2c_master_write_byte(cmd, APR, I2C_MASTER_NACK);
+	i2c_master_stop(cmd);
+	i2c_master_start(cmd);
+	i2c_master_write_byte(cmd, ads_i2c_address | I2C_MASTER_READ, I2C_MASTER_ACK);
+	i2c_master_read(cmd, buf, 2, I2C_MASTER_LAST_NACK);
+	i2c_master_stop(cmd);
+	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
+	i2c_cmd_link_delete(cmd);
+	if(ret != ESP_OK) printf("chyba read register %d \n" , ESP_OK);
+	return ((buffer[0]<<8) + buffer[1]);
+
+//	i2c_send_byte(ads_i2c_address,APR);
+//	i2c_read_buf1(ads_i2c_address,2,buf);
+//	return ((buffer[0]<<8) + buffer[1]);
+
+}
+
+/*
+zapis do registru - APR Address Pointer Register urcuje do ktereho se bude zapisovat
+*/
+void ads_write_register(uint8_t APR, uint16_t data){
+	esp_err_t ret;
+	i2c_cmd_handle_t cmd;
+	cmd = i2c_cmd_link_create();
+	i2c_master_start(cmd);
+	i2c_master_write_byte(cmd, ads_i2c_address| I2C_MASTER_WRITE, I2C_MASTER_NACK);
+	i2c_master_write_byte(cmd, APR, I2C_MASTER_NACK);
+	i2c_master_write_byte(cmd, ( data >> 8 ), I2C_MASTER_NACK);
+	i2c_master_write_byte(cmd, ( data >> 0 ), I2C_MASTER_NACK);
+	i2c_master_stop(cmd);
+	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
+	i2c_cmd_link_delete(cmd);
+	if(ret != ESP_OK) printf("chyba write register  ESP_: %d \n ", ret);
+
+//	i2c_start();
+//	i2c_write(ads_i2c_address);
+//	i2c_write(APR);
+//	i2c_write( data >> 8 );
+//	i2c_write( data >> 0 );
+//	i2c_stop();
+
+}
 void ads_init(){
-	if(ads_test_address(ads_i2c_address)) {									//testovani je li prevodnik
+	if(ads_test_address(ads_i2c_address) == ESP_OK) {									//testovani je li prevodnik
+		printf("bufconfigregister 1: %x\n", ads_read_register(ADS_Config_register));
 		ads_OK = 1;															//prevodnik je na adrese
 		ads_write_register(ADS_Config_register,0x8583);						//reset config
+		ads_write_register(ADS_Config_register,0x1234);						//reset config
 		Buf_Config_register = ads_read_register(ADS_Config_register);		//nacte config register do Buf_Config_register
 //		lcd_bin_al(0,0,Buf_Config_register,16,_left);
 //		ads_set_mux(ADS_MUX4);												//nastavi 100 : AINP = AIN0 and AINN = GND
-		printf("bufconfigregister: %d", Buf_Config_register);
+		printf("bufconfigregister 2: %x\n", Buf_Config_register);
 		ads_set_datarate(ADS_DR8);											////000 : 8 SPS(default)
 		ads_set_gain(ADS_FSR1);												//001 : FSR = ±4.096 V
 		ads_bit_set((ADS_MODE),ADS_Single);									//Continuous-conversion mode
@@ -71,11 +124,10 @@ int8_t ads_test_address(uint8_t adresa){
 	i2c_cmd_handle_t cmd;
 	cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);
-	i2c_master_write_byte(cmd, (ads_i2c_address) | I2C_MASTER_WRITE, I2C_MASTER_ACK);
+	i2c_master_write_byte(cmd, ads_i2c_address | I2C_MASTER_WRITE, I2C_MASTER_NACK);
 	i2c_master_stop(cmd);
 	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
-
-	printf("ret = %d  \n", ret);
+//	printf("ret = %d  \n", ret);
 	i2c_cmd_link_delete(cmd);
 	return ret;
 
@@ -106,57 +158,7 @@ void ads_start_conversion(){
 //}
 
 
-uint16_t ads_read_register(uint8_t APR){								//precti register
-	uint8_t buffer[3];
-	uint8_t *buf = &buffer[0];
 
-	esp_err_t ret;
-	i2c_cmd_handle_t cmd;
-	cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd);
-	i2c_master_write_byte(cmd, (ads_i2c_address <<1) | I2C_MASTER_WRITE, I2C_MASTER_ACK);
-	i2c_master_read(cmd, buf, sizeof(buffer), I2C_MASTER_ACK);
-	i2c_master_stop(cmd);
-	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
-	if(ret != ESP_OK) printf("chyba start mereni\n");
-	return ((buffer[0]<<8) + buffer[1]);
-
-//	i2c_send_byte(ads_i2c_address,APR);
-//	i2c_read_buf1(ads_i2c_address,2,buf);
-//	return ((buffer[0]<<8) + buffer[1]);
-
-}
-
-/*
-zapis do registru - APR Address Pointer Register urcuje do ktereho se bude zapisovat
-*/
-void ads_write_register(uint8_t APR, uint16_t data){
-	esp_err_t ret;
-	i2c_cmd_handle_t cmd;
-	cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd);
-	i2c_master_write_byte(cmd, (ads_i2c_address <<1) | I2C_MASTER_WRITE, I2C_MASTER_ACK);
-	i2c_master_write_byte(cmd, APR, I2C_MASTER_ACK);
-	i2c_master_write_byte(cmd, ( data >> 8 ), I2C_MASTER_ACK);
-	i2c_master_write_byte(cmd, ( data >> 0 ), I2C_MASTER_ACK);
-	i2c_master_stop(cmd);
-	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
-	if(ret != ESP_OK) printf("chyba cas\n");
-
-
-//	i2c_start();
-//	i2c_write(ads_i2c_address);
-//	i2c_write(APR);
-//	i2c_write( data >> 8 );
-//	i2c_write( data >> 0 );
-//	i2c_stop();
-
-
-
-
-}
 
 void ads_bit_set(uint8_t bit, uint8_t hodnota){											//nastaveni bitu v registru
 	if(hodnota)	Buf_Config_register|=(1<<bit);
