@@ -13,9 +13,9 @@
 #include "freertos/task.h"
 #include "driver/i2c.h"
 #include "sdkconfig.h"
-#include "ads_1115.h"
 #include "math.h"
-#include "ulp.h"
+#include "../ADS_1115/ads_1115.h"
+#include "../ULP/ulp.h"
 //#include "ADS_1115/ads_1115.h"
 
 ULP_VAR_STRUCT _ULP_promenne_global = {.M_span = M_span_def,.sens_code = Sens_code_def,.PPM_select = PPM_sel_def};

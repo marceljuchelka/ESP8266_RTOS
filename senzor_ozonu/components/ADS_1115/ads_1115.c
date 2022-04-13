@@ -12,10 +12,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/FreeRTOSConfig.h"
 #include "freertos/task.h"
-#include "ads_1115.h"
-//#include "../ULP/ulp.h"
 #include "driver/i2c.h"
-
+#include "../ADS_1115/ads_1115.h"
+#include "../ULP/ulp.h"
 
 
 volatile uint16_t Buf_Config_register;
