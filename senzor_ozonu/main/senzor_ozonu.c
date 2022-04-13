@@ -55,9 +55,9 @@ void vPrintFreeMemory(void *arg) {
 //		printf("BlikLedMBHandle: %d \n", uxTaskGetStackHighWaterMark(BlikLedMBHandle));
 //		printf("vPrintFreeMemory: %d \n", uxTaskGetStackHighWaterMark(NULL));
 //		printf("MUX %d   hodnota: %f \n", MUX, ads_U_input_single(MUX));
-		printf("Baterie %f \n",ULP_Battery_check1());
-		printf("hodnota ozonu je: %f \n", (float)ULP_Vgas_read_PPM());
-//		if(++MUX == 2)MUX = 0;
+//		printf("Baterie %f \n",ULP_Battery_check1());
+		printf("Baterie napeti    Referencni napeti    hodnota ozonu je\n");
+		printf(" %f         %f       %f\n\n\n", ads_U_input_single(ulp_Vbat_read), ads_U_input_single(ulp_Vref_read), ULP_Vgas_read_PPM());
 		vTaskDelay(300 / portTICK_PERIOD_MS);
 	}
 }
@@ -68,7 +68,7 @@ void app_main()
 {
 	printf("start\n");
 	printf("*** senzor ozonu ***\n");
-	vTaskDelay(100);
+	vTaskDelay(300);
 	my_i2c_config();
 //	ads_init();
 	ULP_init();
