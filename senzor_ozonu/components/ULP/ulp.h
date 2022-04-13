@@ -54,7 +54,7 @@ uint8_t		PPM_select;
 
 
 extern ULP_pins_U ULP_pins_U_global;
-extern ULP_VAR_STRUCT ULP_promenne_global;
+extern ULP_VAR_STRUCT _ULP_promenne_global;
 //extern const 	PROGMEM ULP_VAR_STRUCT _ulp_flash_hodnoty;
 //extern			EEMEM	ULP_VAR_STRUCT _ulp_eeprom_hodnoty;
 extern volatile uint8_t ulp_OK, ULP_MUX_FLAG;

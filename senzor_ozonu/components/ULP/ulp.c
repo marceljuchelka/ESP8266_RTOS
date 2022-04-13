@@ -87,7 +87,7 @@ void hodnoty_na_LCD(){
 /*vypocet PPM*/
 float ULP_vypocet_ppm(uint16_t Vref,uint16_t Vgas){
 float PPM;
-PPM = ((float)Vref - (float)ULP_pins_U_global.Voffset_U - (float)Vgas)/ULP_promenne_global.M_span;
+PPM = ((float)Vref - (float)ULP_pins_U_global.Voffset_U - (float)Vgas)/_ULP_promenne_global.M_span;
 //return ((float)_Vref - (float)Vgas)/M_spam;
 PPM = round(PPM*100)/100;
 if(PPM < 0) PPM = 0;
@@ -146,7 +146,8 @@ int8_t ULP_start(){
 
 float ULP_Vgas_read_PPM(){
 	float PPM;
-	PPM = (ULP_pins_U_global.Vref_U - ads_U_input_single(ulp_Vgas_read))/ULP_promenne_global.M_span;
+	ULP_pins_U_global.Vref_U = ads_U_input_single(ulp_Vref_read);
+	PPM = (ULP_pins_U_global.Vref_U - ads_U_input_single(ulp_Vgas_read))/_ULP_promenne_global.M_span;
 	if(PPM<0)PPM = 0;
 	return PPM;
 }
