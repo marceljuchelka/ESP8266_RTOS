@@ -9,6 +9,7 @@
 #define ULP_ULP_H_
 
 #include "../ADS_1115/ads_1115.h"
+#include "queue.h"
 
 #define ULP_ADS_address 		ads_i2c_add_0x90				//adresa prevodniku pro ULP
 //vystupy na senzoru
@@ -52,7 +53,7 @@ typedef struct{
 
 uint8_t		PPM_select;
 
-
+extern QueueHandle_t fronta_vzorku_napeti;
 extern ULP_pins_U ULP_pins_U_global;
 extern ULP_VAR_STRUCT _ULP_promenne_global;
 //extern const 	PROGMEM ULP_VAR_STRUCT _ulp_flash_hodnoty;
@@ -69,6 +70,6 @@ float ULP_Vgas_read_PPM();
 float ULP_linreg(float ppm);
 void hodnoty_na_LCD();
 void vULP_PPM_read(void *arg);
-void ULP_set_cont(void *arg);
+void vULP_set_cont(void *arg);
 
 #endif /* ULP_ULP_H_ */

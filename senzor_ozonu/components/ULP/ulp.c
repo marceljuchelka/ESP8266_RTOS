@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "queue.h"
 #include "driver/i2c.h"
 #include "sdkconfig.h"
 #include "math.h"
@@ -19,9 +20,9 @@
 //#include "ADS_1115/ads_1115.h"
 
 ULP_VAR_STRUCT _ULP_promenne_global = {.M_span = M_span_def,.sens_code = Sens_code_def,.PPM_select = PPM_sel_def};
-
-
 ULP_pins_U ULP_pins_U_global;
+
+QueueHandle_t fronta_vzorku_napeti;
 
 volatile uint8_t ulp_OK = 0, ULP_MUX_FLAG = 0;
 
@@ -109,18 +110,37 @@ float ULP_Battery_check1(){										//kontrola baterie je li pod Vbat_min (2.8V
 return Ubattery;
 }
 
-void ULP_set_cont(void *arg){
+void vULP_set_cont(void *arg){
 	ads_set_mux(ulp_Vgas_read);
 	ads_bit_set((ADS_MODE),ADS_Continuous_mode);						//single or Continuous-conversion mode
 }
 
+
+
+
+void vULP_VoltageRead(void *arg){
+
+	float nacteno = 0;
+	while(1){
+		nacteno = ads_read_register(ADS_Conversion_register);
+		if(xQueueSendToBack(fronta_vzorku_napeti,&nacteno,0));
+		vTaskDelay(20);
+	}
+}
+
+TaskHandle_t voltagereadHandle;
+
 void vULP_PPM_read(void *arg){
-	float PPM;
-	ULP_pins_U_global.Vgas_U = ads_read_register(ADS_Conversion_register) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
-	PPM = (ULP_pins_U_global.Vref_U - ULP_pins_U_global.Voffset_U - ULP_pins_U_global.Vgas_U)/_ULP_promenne_global.M_span;
-	printf("Vgas     Vref     Vofset\n");
-	printf("%f       %f       %f \n\n", ULP_pins_U_global.Vgas_U, ULP_pins_U_global.Vref_U, ULP_pins_U_global.Voffset_U);
-	printf("----------PPM %f\n\n",PPM);
+	float PPM,DataZFronty;
+	xTaskCreate(vULP_VoltageRead, "", 2000, NULL, 1, &voltagereadHandle);
+	if(xQueueReceive(fronta_vzorku_napeti, &DataZFronty, 10)){
+		printf("data z fronty : %f\n", DataZFronty);
+	};
+//	ULP_pins_U_global.Vgas_U = ads_read_register(ADS_Conversion_register) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
+//	PPM = (ULP_pins_U_global.Vref_U - ULP_pins_U_global.Voffset_U - ULP_pins_U_global.Vgas_U)/_ULP_promenne_global.M_span;
+//	printf("Vgas     Vref     Vofset\n");
+//	printf("%f       %f       %f \n\n", ULP_pins_U_global.Vgas_U, ULP_pins_U_global.Vref_U, ULP_pins_U_global.Voffset_U);
+//	printf("----------PPM %f\n\n",PPM);
 
 }
 

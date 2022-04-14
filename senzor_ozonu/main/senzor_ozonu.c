@@ -69,22 +69,23 @@ void print_PPM(void *arg){
 		while(1){
 			vULP_PPM_read(0);
 			esp_task_wdt_reset();
-		vTaskDelay(10);
+		vTaskDelay(200);
 		}
 	}
 }
+
 
 void app_main()
 {
 	printf("start\n");
 	printf("*** senzor ozonu ***\n");
 	vTaskDelay(100);
-
+	fronta_vzorku_napeti = xQueueCreate(5,sizeof(float));
 	my_i2c_config();
 //	ads_init();
 	ULP_init();
 //	ULP_pins_U_global.Vref_U = ads_U_input_single(ulp_Vref_read);
-	ULP_set_cont(0);
+	vULP_set_cont(0);
 
 //	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
 //	printf("napeti baterie %f\n" , ads_U_input_single(ulp_Vbat_read));
