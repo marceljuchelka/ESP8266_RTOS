@@ -36,7 +36,7 @@ void vBlink_Led2(void *arg){
 
 	while(1){
 		gpio_set_level(GPIO_NUM_2, uroven=uroven^1);
-		vTaskDelay(50);
+		vTaskDelay(20);
 	}
 }
 
@@ -66,13 +66,11 @@ void vPrintFreeMemory(void *arg) {
 
 void print_PPM(void *arg){
 	while(1){
-		vULP_PPM_read(0);
-		printf("bufConfigReg: %X", Buf_Config_register);
-		ULP_pins_U_global.Vref_U = ads_read_single_mux(ulp_Vref_read) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) &0X06];
-		printf("vref1 %f\n", ULP_pins_U_global.Vref_U);
-		ULP_pins_U_global.Vref_U = ads_read_single_mux(ulp_Vref_read) * ads_fsr_table[ADS_FSR1];
-		printf("vref2 %f\n", ULP_pins_U_global.Vref_U);
-		vTaskDelay(100);
+		while(1){
+			vULP_PPM_read(0);
+			esp_task_wdt_reset();
+		vTaskDelay(10);
+		}
 	}
 }
 

@@ -38,7 +38,7 @@ void ULP_init(){															//nastaveni prevodniku s O3 senzorem
 		ads_set_gain(ADS_FSR1);												//001 : FSR = ±4.096 V
 		ads_bit_set((ADS_MODE),ADS_Single);									//single or Continuous-conversion mode
 		Buf_Config_register = ads_read_register(ADS_Config_register);
-		ULP_pins_U_global.Vref_U = ads_read_single_mux(ulp_Vref_read) * ads_fsr_table[ADS_FSR1];//ads_fsr_table[(Buf_Config_register>>ADS_PGA0) &0X06];
+		ULP_pins_U_global.Vref_U = ads_read_single_mux(ulp_Vref_read) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
 		printf("v ref> %f", ULP_pins_U_global.Vref_U);
 	}
 	else{
@@ -115,13 +115,12 @@ void ULP_set_cont(void *arg){
 }
 
 void vULP_PPM_read(void *arg){
-	ULP_pins_U napeti;
-	float vysledek;
 	float PPM;
-	ULP_pins_U_global.Vgas_U = ads_read_register(ADS_Conversion_register);
-	PPM = (ULP_pins_U_global.Vgas_U - ULP_pins_U_global.Voffset_U - ULP_pins_U_global.Vgas_U)/_ULP_promenne_global.M_span;
-	vysledek = ads_read_register(ADS_Conversion_register);
-//	printf("napeti vgas %f\n",ads_U_input_cont(ulp_Vgas_read) * ads_fsr_table[ADS_FSR1]);
+	ULP_pins_U_global.Vgas_U = ads_read_register(ADS_Conversion_register) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
+	PPM = (ULP_pins_U_global.Vref_U - ULP_pins_U_global.Voffset_U - ULP_pins_U_global.Vgas_U)/_ULP_promenne_global.M_span;
+	printf("Vgas     Vref     Vofset\n");
+	printf("%f       %f       %f \n\n", ULP_pins_U_global.Vgas_U, ULP_pins_U_global.Vref_U, ULP_pins_U_global.Voffset_U);
+	printf("----------PPM %f\n\n",PPM);
 
 }
 

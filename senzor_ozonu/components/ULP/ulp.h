@@ -27,7 +27,7 @@
 #define 	U_Bat_min	2800		//minimalni napeti baterie 2800mV (Vref * 2)
 #define 	_TIAgain	499
 #define 	PPM_sel_def		3
-#define 	Sens_code_def	53920		//53000	49320	46030				//hodnota sensivity code ze senzoru
+#define 	Sens_code_def	45610		//prace 53920			//hodnota sensivity code ze senzoru
 #define 	M_span_def		(((float)Sens_code_def/1000)*((float)_TIAgain))/1000		//defaultni napeti		mV/PPM
 
 //pozadavky na system
