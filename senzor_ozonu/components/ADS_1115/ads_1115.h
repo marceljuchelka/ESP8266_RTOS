@@ -127,7 +127,7 @@ float ads_U_input_single(uint8_t MUX);
 float ads_U_input_cont(uint8_t MUX);
 
 
-
+extern const float ads_fsr_table[6];
 extern volatile uint8_t ads_OK,ads_i2c_address;
 extern volatile uint16_t Buf_Config_register;
 

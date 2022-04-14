@@ -90,14 +90,14 @@ void ads_init(){
 		printf("bufconfigregister 1: %x\n", ads_read_register(ADS_Config_register));
 		ads_OK = 1;															//prevodnik je na adrese
 		ads_write_register(ADS_Config_register,0x8583);						//reset config
-		ads_write_register(ADS_Config_register,0x1234);						//reset config
+//		ads_write_register(ADS_Config_register,0x1234);						//reset config
 		Buf_Config_register = ads_read_register(ADS_Config_register);		//nacte config register do Buf_Config_register
 //		lcd_bin_al(0,0,Buf_Config_register,16,_left);
 //		ads_set_mux(ADS_MUX4);												//nastavi 100 : AINP = AIN0 and AINN = GND
 		printf("bufconfigregister 2: %x\n", Buf_Config_register);
 		ads_set_datarate(ADS_DR8);											////000 : 8 SPS(default)
 		ads_set_gain(ADS_FSR1);												//001 : FSR = ±4.096 V
-		ads_bit_set((ADS_MODE),ADS_Single);									//Continuous-conversion mode
+		ads_bit_set((ADS_MODE),ADS_Continuous_mode);						//Continuous-conversion mode
 		Buf_Config_register = ads_read_register(ADS_Config_register);
 	}
 }
@@ -146,15 +146,7 @@ void ads_start_conversion(){
 	Buf_Config_register|= (1<<ADS_OS);									//nastav 1 na OS
 	ads_write_register(ADS_Config_register,Buf_Config_register);
 }
-//void ads_read_config_register(){
-//	uint8_t buffer[3];
-//	uint8_t *buf = &buffer[0];
-//	i2c_send_byte(ads_i2c_address,ADS_Config_register);
-//	i2c_read_buf1(ads_i2c_address,2,buf);
-//	Buf_Config_register=((buffer[0]<<8) + buffer[1]);
-//	lcd_hex_al(1,0,Buf_Config_register,_left);
-//	_delay_ms(5000);
-//}
+
 
 
 
@@ -170,11 +162,13 @@ uint8_t ads_bit_test(uint8_t bit){
 	else return 0;
 }
 
+
+
 uint16_t ads_read_single_mux(uint8_t MUX){						//nacteni hodnoty v single modu z urciteho MUX
 
 	ads_set_mux(MUX);
 	ads_start_conversion();
-	vTaskDelay(13);
+//	vTaskDelay(13);
 	while(!(ads_bit_test(ADS_OS))) ;							//cekani na ukonceni prevodu
 	return ads_read_register(ADS_Conversion_register);
 
@@ -199,3 +193,5 @@ float ads_U_input_cont(uint8_t MUX){
 	vypocet = ads_read_continual_mux(MUX) * ads_fsr_table[result_PGA] ;								//*pgm_read_float(ads_fsr_table[1]
 	return vypocet;
 }
+
+

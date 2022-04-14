@@ -36,7 +36,7 @@ void vBlink_Led2(void *arg){
 
 	while(1){
 		gpio_set_level(GPIO_NUM_2, uroven=uroven^1);
-		vTaskDelay(20);
+		vTaskDelay(50);
 	}
 }
 
@@ -56,25 +56,46 @@ void vPrintFreeMemory(void *arg) {
 //		printf("vPrintFreeMemory: %d \n", uxTaskGetStackHighWaterMark(NULL));
 //		printf("MUX %d   hodnota: %f \n", MUX, ads_U_input_single(MUX));
 //		printf("Baterie %f \n",ULP_Battery_check1());
-		printf("Baterie napeti    Referencni napeti    hodnota ozonu je\n");
-		printf(" %f         %f       %f\n\n\n", ads_U_input_single(ulp_Vbat_read), ads_U_input_single(ulp_Vref_read), ULP_Vgas_read_PPM());
+//		printf("Baterie napeti    Referencni napeti    hodnota ozonu je\n");
+//		printf(" %f         %f       %f\n\n\n", ads_U_input_single(ulp_Vbat_read), ads_U_input_single(ulp_Vref_read), ULP_Vgas_read_PPM());
+//		printf("OZON > %f\n",ULP_Vgas_read_PPM());
+
 		vTaskDelay(300 / portTICK_PERIOD_MS);
 	}
 }
 
-
+void print_PPM(void *arg){
+	while(1){
+		vULP_PPM_read(0);
+		printf("bufConfigReg: %X", Buf_Config_register);
+		ULP_pins_U_global.Vref_U = ads_read_single_mux(ulp_Vref_read) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) &0X06];
+		printf("vref1 %f\n", ULP_pins_U_global.Vref_U);
+		ULP_pins_U_global.Vref_U = ads_read_single_mux(ulp_Vref_read) * ads_fsr_table[ADS_FSR1];
+		printf("vref2 %f\n", ULP_pins_U_global.Vref_U);
+		vTaskDelay(100);
+	}
+}
 
 void app_main()
 {
 	printf("start\n");
 	printf("*** senzor ozonu ***\n");
-	vTaskDelay(300);
+	vTaskDelay(100);
+
 	my_i2c_config();
 //	ads_init();
 	ULP_init();
-	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
-	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1,&BlikLedMBHandle );
+//	ULP_pins_U_global.Vref_U = ads_U_input_single(ulp_Vref_read);
+	ULP_set_cont(0);
 
+//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
+//	printf("napeti baterie %f\n" , ads_U_input_single(ulp_Vbat_read));
+
+//	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
+	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1,&BlikLedMBHandle );
+	xTaskCreate(print_PPM, "printPPM", 1500, NULL, 1, NULL);
+	while(1){
+	}
 
 
 }
