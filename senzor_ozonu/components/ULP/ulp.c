@@ -4,6 +4,7 @@
  *  Created on: 17. 5. 2020
  *      Author: Marcel Juchelka
  *      senzor ULP pro O3 a mereni pomoci ads1115 I2C AD prevodniku
+ *      Nacitani co 200ms ukladani do fronty a 1x za sekundu se ulozi do fronty ozonHandle kde je neustale prepisovana
   */
 
 
