@@ -26,7 +26,7 @@
 
 TaskHandle_t	BlikLedMBHandle;
 TaskHandle_t	PrintFreeMemoryHandle;
-QueueHandle_t	OzonHandle;
+
 
 
 
@@ -53,7 +53,7 @@ while(1){
 }
 
 void vPrintFreeMemory(void *arg) {
-	uint8_t MUX = 0;
+//	uint8_t MUX = 0;
 	while (1) {
 //		printf("BlikLedMBHandle: %d \n", uxTaskGetStackHighWaterMark(BlikLedMBHandle));
 		printf("volna pamet %d\n", esp_get_free_heap_size());
@@ -97,14 +97,14 @@ void app_main()
 	vTaskDelay(200);
 	printf("start\n");
 	printf("*** senzor ozonu ***\n");
-	fronta_vzorku_napeti = xQueueCreate(5,sizeof(float));
-	OzonHandle = xQueueCreate(1,sizeof(float));
+
+//	OzonHandle = xQueueCreate(1,sizeof(float));
+
 	my_i2c_config();
 	tm_1637_gpio_init();
 	//	ads_init();
 	ULP_init();
 //	ULP_pins_U_global.Vref_U = ads_U_input_single(ulp_Vref_read);
-	vULP_set_cont(0);
 	led_print(0, "1234");
 	vTaskDelay(200);
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
@@ -113,11 +113,11 @@ void app_main()
 
 
 	/*spusteni tasku  */
-	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
+//	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
 //	xTaskCreate(pxTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)
+	xTaskCreate(vULP_VoltageRead, "voltage read", 4096, NULL, 1, voltagereadHandle);
 	xTaskCreate(vPrintOzonNaLED, "print ozon", 2048, NULL, 1, NULL);
 	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1,&BlikLedMBHandle );
-	xTaskCreate(vULP_VoltageRead, "voltage read", 1500, NULL, 1, voltagereadHandle);
 	xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle);
 	while(1){
 //		ESP_LOGI("Main"," while");
