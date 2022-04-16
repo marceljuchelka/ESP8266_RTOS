@@ -75,6 +75,7 @@ void led_day_set ();
 void led_night_set ();
 void led_print(uint8_t pos, char *str);
 void tm_1637_gpio_init();
+void led_dots_test(uint8_t on);
 
 
 #endif /* COMPONENTS_TM_1637_LED_TM_1637_LED_H_ */

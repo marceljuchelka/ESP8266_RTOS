@@ -83,9 +83,11 @@ void vPrintOzonNaLED(void *arg) {
 	while (1) {
 		if (xQueueReceive(OzonHandle, &ozonPPM, 10) == pdTRUE) printf("Hodnota ozonu> %f\n", ozonPPM);
 //		if (ozonPPM<10)
-			sprintf(OzonBuf,"p%d\n", (uint8_t)(ozonPPM*10));
-			printf("ozon string> %s\n", OzonBuf);
-			led_print(0, OzonBuf);
+//			ozonPPM = ozonPPM;
+			sprintf(OzonBuf,"P-%i", (int)ozonPPM);
+//			printf("ozon string> %s strlen: %d\n", OzonBuf, strlen(OzonBuf));
+			led_print(0, "    ");
+			led_print(4-strlen(OzonBuf), OzonBuf);
 		vTaskDelay(100);
 	}
 }
@@ -103,7 +105,7 @@ void app_main()
 	ULP_init();
 //	ULP_pins_U_global.Vref_U = ads_U_input_single(ulp_Vref_read);
 	vULP_set_cont(0);
-	led_print(0, "STRT");
+	led_print(0, "1234");
 	vTaskDelay(200);
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
 //	printf("napeti baterie %f\n" , ads_U_input_single(ulp_Vbat_read));
