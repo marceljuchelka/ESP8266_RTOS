@@ -84,6 +84,7 @@ void tm_1637_gpio_init() {
 	conf.mode = GPIO_MODE_OUTPUT;
 	conf.intr_type = GPIO_INTR_DISABLE;
 	gpio_config(&conf);
+
 }
 
 
@@ -199,16 +200,6 @@ void led_dots(uint8_t on)
 //    if(on) SET_BIT(sbuff[1],7);
 //    else CLR_BIT(sbuff[1],7);
 	if(on) sbuff[1]|= (1<<7);
-	else sbuff[1]&= ~(1<<7);
-
-    led_update();
-    }
-
-void led_dots_test(uint8_t on)
-    {
-//    if(on) SET_BIT(sbuff[1],7);
-//    else CLR_BIT(sbuff[1],7);
-	if(on) sbuff[1]= (1<<7);
 	else sbuff[1]&= ~(1<<7);
 
     led_update();

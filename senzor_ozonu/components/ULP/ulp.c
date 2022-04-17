@@ -42,28 +42,24 @@ void ULP_set_cont(void *arg){
 	ads_bit_set((ADS_MODE),ADS_Continuous_mode);						//single or Continuous-conversion mode
 }
 
-/* nacitani hodnot ze senzoru  	xTaskCreate(vULP_VoltageRead, "voltage read", 1500, NULL, 1, voltagereadHandle); */
+/* nacitani hodnot ze senzoru  	xTaskCreate(vULP_VoltageRead, "voltage read", 1300, NULL, 1, voltagereadHandle); */
 void vULP_VoltageRead(void *arg){
 	OzonHandle = xQueueCreate(1,sizeof(float));							//aktualni hodnota ozonu
 	fronta_vzorku_napeti = xQueueCreate(5,sizeof(float));				//fronta nacitani hodnot y cidla
-//	ESP_LOGI("VoltRead","start");
 	ULP_set_cont(0);
 	float nacteno = 0;
 	while(1){
-		nacteno = ads_read_register(ADS_Conversion_register) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
-//		printf("nasitani napeti: %d hodnota %f\n", uxTaskGetStackHighWaterMark(NULL), nacteno);
-//		ESP_LOGI("VoltRead","nacitani");
+		nacteno = ads_read_register(ADS_Conversion_register) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];  	//nacteni hodnoty s pinu Vgas a nasobeni koeficientem dle tabulky
+//		ESP_LOGI("VoltRead","nacitani pamet k uvolneni %d", uxTaskGetStackHighWaterMark(NULL));
 		if(xQueueSendToBack(fronta_vzorku_napeti,&nacteno,0)!=pdTRUE) {
 			vTaskResume(PPMReadHandle);
-//			ESP_LOGI("VoltRead","probouzim PPMread");
 		}
 		esp_task_wdt_reset();
-//		ESP_LOGI("VoltRead", "zbyvajici pamet %d\n",uxTaskGetStackHighWaterMark(NULL));
 		vTaskDelay(20);
 	}
 }
 
-/* nacteni a vypocet PPM  ulozeni do ozon queue xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle)*/
+/* nacteni a vypocet PPM  ulozeni do ozon queue xTaskCreate(vULP_PPM_read, "PPM read", 1300, NULL, 1, &PPMReadHandle)*/
 void vULP_PPM_read(void *arg) {
 
 	float PPM, DataZFronty, prumer = 0;
@@ -76,14 +72,12 @@ void vULP_PPM_read(void *arg) {
 		xQueueOverwrite(OzonHandle,&PPM);
 		prumer = 0;
 		vTaskSuspend(NULL);
-//		ESP_LOGI("PPM read", "probuzeni");
-//		printf("PPMRead zbyvajici pamet: %d \n", uxTaskGetStackHighWaterMark(NULL));
 //		ESP_LOGI("PPM read", "zbyvajici pamet %d\n",uxTaskGetStackHighWaterMark(NULL));
 
 	}
 }
 
-/*inicializace ULP I2C*/
+/*inicializace ULP I2C */
 void ULP_init(){															//nastaveni prevodniku s O3 senzorem
 
 	ads_i2c_address = ULP_ADS_address;
@@ -102,8 +96,6 @@ void ULP_init(){															//nastaveni prevodniku s O3 senzorem
 		printf("modul ULC chybi na adrese %x", ULP_ADS_address);
 	}
 }
-
-
 
 
 

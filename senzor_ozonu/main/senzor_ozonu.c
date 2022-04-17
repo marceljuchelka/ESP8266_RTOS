@@ -84,7 +84,7 @@ void vPrintOzonNaLED(void *arg) {
 		if (xQueueReceive(OzonHandle, &ozonPPM, 10) == pdTRUE) printf("Hodnota ozonu> %f\n", ozonPPM);
 //		if (ozonPPM<10)
 //			ozonPPM = ozonPPM;
-			sprintf(OzonBuf,"P-%i", (int)ozonPPM);
+			sprintf(OzonBuf,"P-%2d", (int)ozonPPM);
 //			printf("ozon string> %s strlen: %d\n", OzonBuf, strlen(OzonBuf));
 			led_print(0, "    ");
 			led_print(4-strlen(OzonBuf), OzonBuf);
@@ -101,12 +101,14 @@ void app_main()
 //	OzonHandle = xQueueCreate(1,sizeof(float));
 
 	my_i2c_config();
+	ULP_init();
 	tm_1637_gpio_init();
 	//	ads_init();
-	ULP_init();
 //	ULP_pins_U_global.Vref_U = ads_U_input_single(ulp_Vref_read);
+	led_day_set();
 	led_print(0, "1234");
 	vTaskDelay(200);
+
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
 //	printf("napeti baterie %f\n" , ads_U_input_single(ulp_Vbat_read));
 
@@ -115,10 +117,10 @@ void app_main()
 	/*spusteni tasku  */
 //	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
 //	xTaskCreate(pxTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)
-	xTaskCreate(vULP_VoltageRead, "voltage read", 4096, NULL, 1, voltagereadHandle);
+	xTaskCreate(vULP_VoltageRead, "voltage read", 1300, NULL, 1, voltagereadHandle);
 	xTaskCreate(vPrintOzonNaLED, "print ozon", 2048, NULL, 1, NULL);
 	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1,&BlikLedMBHandle );
-	xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle);
+	xTaskCreate(vULP_PPM_read, "PPM read", 1300, NULL, 1, &PPMReadHandle);
 	while(1){
 //		ESP_LOGI("Main"," while");
 	}
