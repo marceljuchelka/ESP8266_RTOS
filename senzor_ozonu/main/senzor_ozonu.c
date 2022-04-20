@@ -21,6 +21,8 @@
 #include "../components/ADS_1115/ads_1115.h"
 #include "../components/ULP/ulp.h"
 #include "../components/TM_1637_LED/tm_1637_led.h"
+#include "../components/MK_LCD/mk_lcd44780.h"
+#include "../components/MK_I2C/mk_i2c.h"
 
 #define MB_LED	GPIO_NUM_2
 
@@ -81,7 +83,7 @@ void vPrintOzonNaLED(void *arg) {
 	float ozonPPM = 0;
 	char OzonBuf[5];
 	while (1) {
-		if (xQueueReceive(OzonHandle, &ozonPPM, 10) == pdTRUE) printf("Hodnota ozonu> %f\n", ozonPPM);
+		if (xQueuePeek(OzonHandle, &ozonPPM, 10) == pdTRUE) printf("Hodnota ozonu> %f\n", ozonPPM);
 //		if (ozonPPM<10)
 //			ozonPPM = ozonPPM;
 			sprintf(OzonBuf,"P-%2d", (int)ozonPPM);
@@ -89,6 +91,22 @@ void vPrintOzonNaLED(void *arg) {
 			led_print(0, "    ");
 			led_print(4-strlen(OzonBuf), OzonBuf);
 		vTaskDelay(100);
+	}
+}
+
+void vPrintOzonNaLCD(void *arg){
+	float ozonPPM = 0;
+	char horni_buf[17];
+
+	while(1){
+		if (xQueuePeek(OzonHandle, &ozonPPM, 10) == pdTRUE) printf("Hodnota ozonu> %f\n", ozonPPM);
+//		if (ozonPPM<10)
+//			ozonPPM = ozonPPM;
+			sprintf(horni_buf,"%1.1f PPM", ozonPPM);
+
+			lcd_str_al(0, 0, horni_buf, _left);
+//			lcd_str_al(1, 0, "je spodni radek2", _left);
+		vTaskDelay(200);
 	}
 }
 
@@ -100,13 +118,21 @@ void app_main()
 
 //	OzonHandle = xQueueCreate(1,sizeof(float));
 
-	my_i2c_config();
+//	my_i2c_config();
+	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
+	vTaskDelay(10);
 	ULP_init();
+	vTaskDelay(10);
+	vULP_kalibrace();
 	tm_1637_gpio_init();
+	vTaskDelay(10);
+	lcd_init();
+	vTaskDelay(10);
 	//	ads_init();
 //	ULP_pins_U_global.Vref_U = ads_U_input_single(ulp_Vref_read);
 	led_day_set();
 	led_print(0, "1234");
+	lcd_str("start");
 	vTaskDelay(200);
 
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
@@ -117,10 +143,11 @@ void app_main()
 	/*spusteni tasku  */
 //	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
 //	xTaskCreate(pxTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)
-	xTaskCreate(vULP_VoltageRead, "voltage read", 1300, NULL, 1, voltagereadHandle);
+	xTaskCreate(vULP_VoltageRead, "voltage read", 1500, NULL, 1, voltagereadHandle);
 	xTaskCreate(vPrintOzonNaLED, "print ozon", 2048, NULL, 1, NULL);
 	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1,&BlikLedMBHandle );
-	xTaskCreate(vULP_PPM_read, "PPM read", 1300, NULL, 1, &PPMReadHandle);
+	xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle);
+//	xTaskCreate(vPrintOzonNaLCD, "print na LCD", 1500, NULL, 1, NULL);
 	while(1){
 //		ESP_LOGI("Main"," while");
 	}

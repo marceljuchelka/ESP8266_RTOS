@@ -13,8 +13,11 @@
 #include "freertos/FreeRTOSConfig.h"
 #include "freertos/task.h"
 #include "driver/i2c.h"
+#include "esp_log.h"
+#include "esp_err.h"
 #include "../ADS_1115/ads_1115.h"
 #include "../ULP/ulp.h"
+#include "../MK_I2C/mk_i2c.h"
 
 
 volatile uint16_t Buf_Config_register;
@@ -34,7 +37,8 @@ void my_i2c_config(){
 	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
 }
 
-uint16_t ads_read_register(uint8_t APR){								//precti register
+esp_err_t ads_read_register(uint8_t APR, uint16_t* reg_read){								//precti register
+	const char* TAG =  "ads_read_register";
 	uint8_t buffer[3];
 	uint8_t *buf = &buffer[0];
 
@@ -49,10 +53,16 @@ uint16_t ads_read_register(uint8_t APR){								//precti register
 	i2c_master_write_byte(cmd, ads_i2c_address | I2C_MASTER_READ, I2C_MASTER_ACK);
 	i2c_master_read(cmd, buf, 2, I2C_MASTER_LAST_NACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX;
 	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
+	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
-	if(ret != ESP_OK) printf("chyba read register %d \n" , ESP_OK);
-	return ((buffer[0]<<8) + buffer[1]);
+	if(ret != ESP_OK) {
+		ESP_LOGE(TAG,"chyba read register %d \n" , ESP_OK);
+		return ESP_FAIL;
+	}
+	*reg_read = ((buffer[0]<<8) + buffer[1]);
+	return ESP_OK;
 
 //	i2c_send_byte(ads_i2c_address,APR);
 //	i2c_read_buf1(ads_i2c_address,2,buf);
@@ -64,6 +74,7 @@ uint16_t ads_read_register(uint8_t APR){								//precti register
 zapis do registru - APR Address Pointer Register urcuje do ktereho se bude zapisovat
 */
 void ads_write_register(uint8_t APR, uint16_t data){
+	const char* TAG =  "ads_write_register";
 	esp_err_t ret;
 	i2c_cmd_handle_t cmd;
 	cmd = i2c_cmd_link_create();
@@ -73,9 +84,11 @@ void ads_write_register(uint8_t APR, uint16_t data){
 	i2c_master_write_byte(cmd, ( data >> 8 ), I2C_MASTER_NACK);
 	i2c_master_write_byte(cmd, ( data >> 0 ), I2C_MASTER_NACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX_NORET;
 	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
+	I2C_GIVE_MUTEX_NORET;
 	i2c_cmd_link_delete(cmd);
-	if(ret != ESP_OK) printf("chyba write register  ESP_: %d \n ", ret);
+	if(ret != ESP_OK) ESP_LOGE(TAG,"chyba write register %d \n" , ESP_OK);;
 
 //	i2c_start();
 //	i2c_write(ads_i2c_address);
@@ -85,22 +98,26 @@ void ads_write_register(uint8_t APR, uint16_t data){
 //	i2c_stop();
 
 }
-void ads_init(){
-	if(ads_test_address(ads_i2c_address) == ESP_OK) {									//testovani je li prevodnik
-		printf("bufconfigregister 1: %x\n", ads_read_register(ADS_Config_register));
-		ads_OK = 1;															//prevodnik je na adrese
-		ads_write_register(ADS_Config_register,0x8583);						//reset config
-//		ads_write_register(ADS_Config_register,0x1234);						//reset config
-		Buf_Config_register = ads_read_register(ADS_Config_register);		//nacte config register do Buf_Config_register
-//		lcd_bin_al(0,0,Buf_Config_register,16,_left);
-//		ads_set_mux(ADS_MUX4);												//nastavi 100 : AINP = AIN0 and AINN = GND
-		printf("bufconfigregister 2: %x\n", Buf_Config_register);
-		ads_set_datarate(ADS_DR8);											////000 : 8 SPS(default)
-		ads_set_gain(ADS_FSR1);												//001 : FSR = ±4.096 V
-		ads_bit_set((ADS_MODE),ADS_Continuous_mode);						//Continuous-conversion mode
-		Buf_Config_register = ads_read_register(ADS_Config_register);
-	}
-}
+//void ads_init(){
+//
+//	if(ads_test_address(ads_i2c_address) == ESP_OK) {									//testovani je li prevodnik
+//		if(!ads_read_register(ADS_Config_register, &Buf_Config_register)) esp_loge("ADS_INIT"chyba pri cteni registru"));
+//		printf("bufconfigregister 1: %x\n", Buf_Config_register);
+//		ads_OK = 1;															//prevodnik je na adrese
+//		ads_write_register(ADS_Config_register,0x8583);						//reset config
+////		ads_write_register(ADS_Config_register,0x1234);						//reset config
+////		Buf_Config_register = ads_read_register(ADS_Config_register);		//nacte config register do Buf_Config_register
+////		lcd_bin_al(0,0,Buf_Config_register,16,_left);
+////		ads_set_mux(ADS_MUX4);												//nastavi 100 : AINP = AIN0 and AINN = GND
+//		ads_set_datarate(ADS_DR8);											////000 : 8 SPS(default)
+//		ads_set_gain(ADS_FSR1);												//001 : FSR = ±4.096 V
+////		ads_bit_set((ADS_MODE),ADS_Continuous_mode);						//Continuous-conversion mode
+//		ads_write_register(ADS_Config_register, Buf_Config_register);
+//		ads_read_register(ADS_Config_register, &Buf_Config_register);
+//	}
+//}
+
+
 
 void ads_set_gain(uint8_t FSR){
 	Buf_Config_register&=0xf1ff;										//vynuluj gain
@@ -158,24 +175,30 @@ void ads_bit_set(uint8_t bit, uint8_t hodnota){											//nastaveni bitu v reg
 }
 
 uint8_t ads_bit_test(uint8_t bit){
-	if(ads_read_register(ADS_Config_register) & (1<<bit)) return 1;
+	uint16_t reg_read;
+	ads_read_register(ADS_Config_register, &reg_read);
+	if(reg_read& (1<<bit)) return 1;
 	else return 0;
 }
 
 
 
-uint16_t ads_read_single_mux(uint8_t MUX){						//nacteni hodnoty v single modu z urciteho MUX
-
-	ads_set_mux(MUX);
-	ads_start_conversion();
+uint16_t ads_read_single_mux(uint8_t ulp_V){						//nacteni hodnoty v single modu z urciteho MUX
+	uint16_t reg_read;
+	ads_set_mux(ulp_V);
 //	vTaskDelay(13);
+	ads_start_conversion();
+	vTaskDelay(13);
 	while(!(ads_bit_test(ADS_OS))) ;							//cekani na ukonceni prevodu
-	return ads_read_register(ADS_Conversion_register);
+	ads_read_register(ADS_Conversion_register, &reg_read);
+	return reg_read;
 
 }
 
 uint16_t ads_read_continual_mux(uint8_t MUX){
-	return ads_read_register(ADS_Conversion_register);
+	uint16_t reg_read;
+	ads_read_register(ADS_Conversion_register, &reg_read);
+	return reg_read;
 }
 
 float ads_U_input_single(uint8_t MUX){

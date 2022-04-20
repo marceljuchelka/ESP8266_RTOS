@@ -44,13 +44,15 @@ void ULP_set_cont(void *arg){
 
 /* nacitani hodnot ze senzoru  	xTaskCreate(vULP_VoltageRead, "voltage read", 1300, NULL, 1, voltagereadHandle); */
 void vULP_VoltageRead(void *arg){
+	uint16_t vysledek;
+	const char* TAG =  "ULP_voltage read";
 	OzonHandle = xQueueCreate(1,sizeof(float));							//aktualni hodnota ozonu
 	fronta_vzorku_napeti = xQueueCreate(5,sizeof(float));				//fronta nacitani hodnot y cidla
 	ULP_set_cont(0);
 	float nacteno = 0;
 	while(1){
-		nacteno = ads_read_register(ADS_Conversion_register) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];  	//nacteni hodnoty s pinu Vgas a nasobeni koeficientem dle tabulky
-//		ESP_LOGI("VoltRead","nacitani pamet k uvolneni %d", uxTaskGetStackHighWaterMark(NULL));
+		ads_read_register(ADS_Conversion_register, &vysledek);
+		vysledek = vysledek * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];  	//nacteni hodnoty s pinu Vgas a nasobeni koeficientem dle tabulky
 		if(xQueueSendToBack(fronta_vzorku_napeti,&nacteno,0)!=pdTRUE) {
 			vTaskResume(PPMReadHandle);
 		}
@@ -61,42 +63,58 @@ void vULP_VoltageRead(void *arg){
 
 /* nacteni a vypocet PPM  ulozeni do ozon queue xTaskCreate(vULP_PPM_read, "PPM read", 1300, NULL, 1, &PPMReadHandle)*/
 void vULP_PPM_read(void *arg) {
-
+	const char* TAG =  "PPM_read";
 	float PPM, DataZFronty, prumer = 0;
 	while (1) {
 		while (xQueueReceive(fronta_vzorku_napeti, &DataZFronty, 10)) {
 			prumer = prumer + DataZFronty;
 		};
 		ULP_pins_U_global.Vgas_U = prumer/5;
+		printf("V_gas > %f     V_ref> %f    V_batt> %f  Voffset> %f\n", ULP_pins_U_global.Vgas_U, ULP_pins_U_global.Vref_U, ULP_pins_U_global.Vbatt_U, ULP_pins_U_global.Voffset_U);
 		PPM = (ULP_pins_U_global.Vref_U - ULP_pins_U_global.Voffset_U - ULP_pins_U_global.Vgas_U) / _ULP_promenne_global.M_span;
 		xQueueOverwrite(OzonHandle,&PPM);
 		prumer = 0;
 		vTaskSuspend(NULL);
-//		ESP_LOGI("PPM read", "zbyvajici pamet %d\n",uxTaskGetStackHighWaterMark(NULL));
-
 	}
+}
+
+esp_err_t vULP_kalibrace(){
+	float prumer = 0;
+	uint8_t opakovani = 5;
+	ads_bit_set((ADS_MODE),ADS_Single);									//single or Continuous-conversion mode
+	ULP_pins_U_global.Vbatt_U = ads_read_single_mux(ulp_Vbat_read)* ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
+	ULP_pins_U_global.Vref_U = ads_read_single_mux(ulp_Vref_read) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
+	while(opakovani--) prumer = ads_read_single_mux(ulp_Vgas_read) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
+	ULP_pins_U_global.Vgas_U = prumer/5;
+	ULP_pins_U_global.Vgas_U = ads_read_single_mux(ulp_Vgas_read) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
+	ULP_pins_U_global.Voffset_U = ULP_pins_U_global.Vref_U - ULP_pins_U_global.Vgas_U;
+	printf("V_gas > %f     V_ref> %f    V_batt> %f  Voffset> %f\n", ULP_pins_U_global.Vgas_U, ULP_pins_U_global.Vref_U, ULP_pins_U_global.Vbatt_U, ULP_pins_U_global.Voffset_U);
+	if(ULP_pins_U_global.Voffset_U > 0.0 ) return ESP_OK;
+	return ESP_FAIL;
 }
 
 /*inicializace ULP I2C */
 void ULP_init(){															//nastaveni prevodniku s O3 senzorem
+	const char* TAG =  "ULP_init";
+	uint16_t config_register;
 
 	ads_i2c_address = ULP_ADS_address;
 	if(ads_test_address(ads_i2c_address) == ESP_OK) {									//testovani je li prevodnik
 		ulp_OK = 1;															//prevodnik je na adrese
-		ads_write_register(ADS_Config_register,0x8583);						//reset config
-		Buf_Config_register = ads_read_register(ADS_Config_register);		//nacte config register do Buf_Config_register
+		Buf_Config_register = 0x8583;
+		ads_write_register(ADS_Config_register,Buf_Config_register);						//reset config
+		ads_read_register(ADS_Config_register,&config_register);		//nacte config register do Buf_Config_register
 		ads_set_datarate(ADS_DR8);											//100 : 8 SPS
 		ads_set_gain(ADS_FSR1);												//001 : FSR = ±4.096 V
 		ads_bit_set((ADS_MODE),ADS_Single);									//single or Continuous-conversion mode
-		Buf_Config_register = ads_read_register(ADS_Config_register);
-		ULP_pins_U_global.Vref_U = ads_read_single_mux(ulp_Vref_read) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
-		printf("v ref> %f", ULP_pins_U_global.Vref_U);
+		ads_read_register(ADS_Config_register,&config_register);
+		printf("ADS register2 > 0X %x\n", Buf_Config_register);
 	}
 	else{
-		printf("modul ULC chybi na adrese %x", ULP_ADS_address);
+		ESP_LOGE(TAG,"modul ULC chybi na adrese %x", ULP_ADS_address);
+//		printf("modul ULC chybi na adrese %x", ULP_ADS_address);
 	}
 }
-
 
 
 /* vypocet naklonu krivky */

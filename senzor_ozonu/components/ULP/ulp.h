@@ -43,6 +43,7 @@ typedef struct{
 	float Vref_U;
 	float Vtemp_U;
 	float Voffset_U;
+	float Vbatt_U;
 } ULP_pins_U;					//napeti hna pinech ULP
 
 typedef struct{
@@ -75,6 +76,7 @@ float ULP_linreg(float ppm);
 void hodnoty_na_LCD();
 void vULP_VoltageRead(void *arg);
 void vULP_PPM_read(void *arg);
+esp_err_t vULP_kalibrace();
 
 
 #endif /* ULP_ULP_H_ */
