@@ -21,6 +21,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "mk_lcd44780.h"
+#include "../MK_I2C/mk_i2c.h"
 #include "sdkconfig.h"
 
 
@@ -172,7 +173,6 @@ void _lcd_write_byte(unsigned char _data) {
 
 	// Ustawienie pinów portu LCD D4..D7 jako wyjœcia
 	data_dir_out();
-
 	#if USE_RW == 1
 		CLR_RW;
 	#endif
@@ -192,7 +192,6 @@ void _lcd_write_byte(unsigned char _data) {
 	#else
 		_delay_us(120);
 	#endif
-
 }
 
 #if USE_RW == 1

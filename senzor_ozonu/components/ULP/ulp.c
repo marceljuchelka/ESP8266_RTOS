@@ -34,7 +34,7 @@ volatile uint8_t ulp_OK = 0, ULP_MUX_FLAG = 0;
 
 /* ******************************************************RTOS  *********************************/
 TaskHandle_t	PPMReadHandle;
-TaskHandle_t 	voltagereadHandle;
+TaskHandle_t 	VoltagereadHandle;
 
 
 void ULP_set_cont(void *arg){
@@ -70,7 +70,7 @@ void vULP_PPM_read(void *arg) {
 			prumer = prumer + DataZFronty;
 		};
 		ULP_pins_U_global.Vgas_U = prumer/5;
-		printf("V_gas > %f     V_ref> %f    V_batt> %f  Voffset> %f\n", ULP_pins_U_global.Vgas_U, ULP_pins_U_global.Vref_U, ULP_pins_U_global.Vbatt_U, ULP_pins_U_global.Voffset_U);
+//		printf("V_gas > %f     V_ref> %f    V_batt> %f  Voffset> %f\n", ULP_pins_U_global.Vgas_U, ULP_pins_U_global.Vref_U, ULP_pins_U_global.Vbatt_U, ULP_pins_U_global.Voffset_U);
 		PPM = (ULP_pins_U_global.Vref_U - ULP_pins_U_global.Voffset_U - ULP_pins_U_global.Vgas_U) / _ULP_promenne_global.M_span;
 		xQueueOverwrite(OzonHandle,&PPM);
 		prumer = 0;

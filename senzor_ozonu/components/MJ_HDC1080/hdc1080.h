@@ -30,6 +30,11 @@ void my_i2c_config();
 
 #define hdc_1080_address 0x40
 
+typedef struct{
+	float HDC1080_teplota;
+	float HDC1080_vlhkost;
+}HDC_VAR_T;
+
 typedef union{
 	uint16_t BYTES2;
 	struct{

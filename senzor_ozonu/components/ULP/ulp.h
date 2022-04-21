@@ -57,7 +57,7 @@ uint8_t		PPM_select;
 
 extern QueueHandle_t	OzonHandle;
 extern TaskHandle_t		PPMReadHandle;
-extern TaskHandle_t 	voltagereadHandle;
+extern TaskHandle_t 	VoltagereadHandle;
 extern QueueHandle_t 	fronta_vzorku_napeti;				//fronta na nacitani hodnot z prevodniku
 extern ULP_pins_U ULP_pins_U_global;
 extern ULP_VAR_STRUCT _ULP_promenne_global;

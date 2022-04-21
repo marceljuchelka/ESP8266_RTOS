@@ -22,21 +22,22 @@
 #include "freertos/task.h"
 #include "driver/i2c.h"
 #include "hdc1080.h"
+#include "../MK_I2C/mk_i2c.h"
 #include "sdkconfig.h"
 
 
-	/*konfigurace i2c na ESP  vcetne driveru*/
-void my_i2c_config(){
-	i2c_config_t conf;
-	conf.mode = I2C_MODE_MASTER;
-	conf.sda_io_num = I2C_SDA_PIN;
-    conf.sda_pullup_en = 1;
-	conf.scl_io_num = I2C_SCL_PIN;
-    conf.scl_pullup_en = 1;
-	conf.clk_stretch_tick = 100;
-	ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode));
-	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
-}
+//	/*konfigurace i2c na ESP  vcetne driveru*/
+//void my_i2c_config(){
+//	i2c_config_t conf;
+//	conf.mode = I2C_MODE_MASTER;
+//	conf.sda_io_num = I2C_SDA_PIN;
+//    conf.sda_pullup_en = 1;
+//	conf.scl_io_num = I2C_SCL_PIN;
+//    conf.scl_pullup_en = 1;
+//	conf.clk_stretch_tick = 100;
+//	ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, conf.mode));
+//	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
+//}
 
 
 uint16_t swap_uint16(uint16_t swap_num){
@@ -57,7 +58,9 @@ esp_err_t hdc_start_mereni(reg_map reg_){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1) | I2C_MASTER_WRITE, I2C_MASTER_ACK);
 	i2c_master_write_byte(cmd, reg_, I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX;
 	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
+	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 	if(ret != ESP_OK) printf("chyba start mereni\n");
 	return ret;
@@ -73,7 +76,9 @@ void hdc1080_write_register(reg_map reg_, uint16_t reg_value){
 	i2c_master_write_byte(cmd, (reg_value>>8), I2C_MASTER_ACK);
 	i2c_master_write_byte(cmd, (reg_value), I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX_NORET;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba reg write");
+	I2C_GIVE_MUTEX_NORET;
 	i2c_cmd_link_delete(cmd);
 }
 
@@ -85,7 +90,9 @@ void hdc1080_set_register(reg_map reg_set){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1) | I2C_MASTER_WRITE, I2C_MASTER_ACK);
 	i2c_master_write_byte(cmd, reg_set, I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX_NORET;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba reg set");
+	I2C_GIVE_MUTEX_NORET;
 	i2c_cmd_link_delete(cmd);
 }
 
@@ -100,7 +107,9 @@ uint16_t hdc1080_read_register(reg_map set_register){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1)| I2C_MASTER_READ, I2C_MASTER_ACK);
 	i2c_master_read(cmd, buf, 2, I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba reg read");
+	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 	return swap_uint16(res);
 
@@ -126,7 +135,9 @@ float hdc1080_read_hum(){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1)| I2C_MASTER_READ, I2C_MASTER_ACK);
 	i2c_master_read(cmd, &hodnoty.bytes[2], 2, I2C_MASTER_LAST_NACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba hum");
+	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 
 	/* vypocet hodnot  */
@@ -156,7 +167,9 @@ float hdc1080_read_temp(){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1)| I2C_MASTER_READ, I2C_MASTER_ACK);
 	i2c_master_read(cmd, &hodnoty.bytes[0], 2, I2C_MASTER_LAST_NACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba temp");
+	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 
 	/* vypocet hodnoty */
@@ -177,7 +190,9 @@ esp_err_t hdc1080_measure(float *temp, float *hum){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1)| I2C_MASTER_READ, I2C_MASTER_ACK);
 	i2c_master_read(cmd, &hodnoty.bytes[0], 4, I2C_MASTER_LAST_NACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba measure");
+	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 	printf("readtemppraw = %X\n", hodnoty.temp_r);
 	printf("readhumpraw = %X\n", hodnoty.humid_r);
@@ -188,20 +203,22 @@ esp_err_t hdc1080_measure(float *temp, float *hum){
 }
 
 
-int hdc1080_test(){
+esp_err_t hdc1080_test(){
 	esp_err_t ret;
 	i2c_cmd_handle_t cmd;
 	cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1)|I2C_MASTER_WRITE, I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX;
 	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
+	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 	if(ret != ESP_OK){
 		printf("neni spojeni s hdc1080\n");
-		return 0;
+		return ESP_FAIL;
 	}
-	return 1;
+	return ESP_OK;
 }
 
 
