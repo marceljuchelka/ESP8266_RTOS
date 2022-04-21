@@ -44,20 +44,20 @@ void ULP_set_cont(void *arg){
 
 /* nacitani hodnot ze senzoru  	xTaskCreate(vULP_VoltageRead, "voltage read", 1300, NULL, 1, voltagereadHandle); */
 void vULP_VoltageRead(void *arg){
-	uint16_t vysledek;
 	const char* TAG =  "ULP_voltage read";
 	OzonHandle = xQueueCreate(1,sizeof(float));							//aktualni hodnota ozonu
 	fronta_vzorku_napeti = xQueueCreate(5,sizeof(float));				//fronta nacitani hodnot y cidla
 	ULP_set_cont(0);
-	float nacteno = 0;
-	while(1){
-		ads_read_register(ADS_Conversion_register, &vysledek);
-		vysledek = vysledek * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];  	//nacteni hodnoty s pinu Vgas a nasobeni koeficientem dle tabulky
-		if(xQueueSendToBack(fronta_vzorku_napeti,&nacteno,0)!=pdTRUE) {
-			vTaskResume(PPMReadHandle);
+	ads_set_mux(ulp_Vgas_read);
+	float volt = 0;
+	while (1) {
+		if (ads_read_volt_cont(&volt) == ESP_OK) {					//nacteni hodnoty s pinu Vgas
+			if (xQueueSendToBack(fronta_vzorku_napeti,&volt,0) != pdTRUE) {
+				vTaskResume(PPMReadHandle);
+			}
+			esp_task_wdt_reset();
+			vTaskDelay(20);
 		}
-		esp_task_wdt_reset();
-		vTaskDelay(20);
 	}
 }
 
@@ -79,14 +79,18 @@ void vULP_PPM_read(void *arg) {
 }
 
 esp_err_t vULP_kalibrace(){
-	float prumer = 0;
-	uint8_t opakovani = 5;
+	float prumer = 0, napeti = 0;
+	uint8_t opakovani = 5, pokusy = 10;
 	ads_bit_set((ADS_MODE),ADS_Single);									//single or Continuous-conversion mode
-	ULP_pins_U_global.Vbatt_U = ads_read_single_mux(ulp_Vbat_read)* ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
-	ULP_pins_U_global.Vref_U = ads_read_single_mux(ulp_Vref_read) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
-	while(opakovani--) prumer = ads_read_single_mux(ulp_Vgas_read) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
+	while(ads_read_volt_single(ulp_Vbat_read, &napeti) != ESP_OK);
+	ULP_pins_U_global.Vbatt_U =  napeti;
+	while(ads_read_volt_single(ulp_Vref_read, &napeti) != ESP_OK);
+	ULP_pins_U_global.Vref_U = napeti;
+	while(opakovani--) {
+		while(ads_read_volt_single(ulp_Vgas_read, &napeti));
+		prumer = prumer + napeti;
+	}
 	ULP_pins_U_global.Vgas_U = prumer/5;
-	ULP_pins_U_global.Vgas_U = ads_read_single_mux(ulp_Vgas_read) * ads_fsr_table[(Buf_Config_register>>ADS_PGA0) & 0X07];
 	ULP_pins_U_global.Voffset_U = ULP_pins_U_global.Vref_U - ULP_pins_U_global.Vgas_U;
 	printf("V_gas > %f     V_ref> %f    V_batt> %f  Voffset> %f\n", ULP_pins_U_global.Vgas_U, ULP_pins_U_global.Vref_U, ULP_pins_U_global.Vbatt_U, ULP_pins_U_global.Voffset_U);
 	if(ULP_pins_U_global.Voffset_U > 0.0 ) return ESP_OK;
@@ -97,7 +101,7 @@ esp_err_t vULP_kalibrace(){
 void ULP_init(){															//nastaveni prevodniku s O3 senzorem
 	const char* TAG =  "ULP_init";
 	uint16_t config_register;
-
+	float napeti;
 	ads_i2c_address = ULP_ADS_address;
 	if(ads_test_address(ads_i2c_address) == ESP_OK) {									//testovani je li prevodnik
 		ulp_OK = 1;															//prevodnik je na adrese
@@ -108,6 +112,7 @@ void ULP_init(){															//nastaveni prevodniku s O3 senzorem
 		ads_set_gain(ADS_FSR1);												//001 : FSR = ±4.096 V
 		ads_bit_set((ADS_MODE),ADS_Single);									//single or Continuous-conversion mode
 		ads_read_register(ADS_Config_register,&config_register);
+		ads_read_volt_single(ulp_Vbat_read, &napeti);
 		printf("ADS register2 > 0X %x\n", Buf_Config_register);
 	}
 	else{

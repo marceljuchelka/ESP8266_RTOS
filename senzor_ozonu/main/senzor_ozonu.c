@@ -102,10 +102,10 @@ void vPrintOzonNaLCD(void *arg){
 		if (xQueuePeek(OzonHandle, &ozonPPM, 10) == pdTRUE) printf("Hodnota ozonu> %f\n", ozonPPM);
 //		if (ozonPPM<10)
 //			ozonPPM = ozonPPM;
-			sprintf(horni_buf,"%1.1f PPM", ozonPPM);
+			sprintf(horni_buf,"hodnota PPM %1.1f0", ozonPPM);
 
 			lcd_str_al(0, 0, horni_buf, _left);
-//			lcd_str_al(1, 0, "je spodni radek2", _left);
+			lcd_str_al(1, 0, "je spodni radek2", _left);
 		vTaskDelay(200);
 	}
 }
@@ -147,7 +147,7 @@ void app_main()
 	xTaskCreate(vPrintOzonNaLED, "print ozon", 2048, NULL, 1, NULL);
 	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1,&BlikLedMBHandle );
 	xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle);
-//	xTaskCreate(vPrintOzonNaLCD, "print na LCD", 1500, NULL, 1, NULL);
+	xTaskCreate(vPrintOzonNaLCD, "print na LCD", 1500, NULL, 1, NULL);
 	while(1){
 //		ESP_LOGI("Main"," while");
 	}

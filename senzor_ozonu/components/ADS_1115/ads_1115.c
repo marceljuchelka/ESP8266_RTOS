@@ -37,6 +37,8 @@ void my_i2c_config(){
 	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
 }
 
+
+
 esp_err_t ads_read_register(uint8_t APR, uint16_t* reg_read){								//precti register
 	const char* TAG =  "ads_read_register";
 	uint8_t buffer[3];
@@ -119,23 +121,23 @@ void ads_write_register(uint8_t APR, uint16_t data){
 
 
 
+
 void ads_set_gain(uint8_t FSR){
 	Buf_Config_register&=0xf1ff;										//vynuluj gain
-	Buf_Config_register|= ((uint16_t)FSR << 9);
+	Buf_Config_register|= ((uint16_t)FSR << ADS_PGA0);
 	ads_write_register(ADS_Config_register,Buf_Config_register);
 }
 void ads_set_mux(uint8_t MUX){
 	Buf_Config_register&=0x8fff;										//vynuluj MUX
-	Buf_Config_register|= ((uint16_t)MUX << 12);
+	Buf_Config_register|= ((uint16_t)MUX << ADS_MUX_0);
 	ads_write_register(ADS_Config_register,Buf_Config_register);
 }
 void ads_set_datarate(uint8_t DR){
 	Buf_Config_register&=0xFF1F;										//vynuluj datarate
-	Buf_Config_register|= ((uint16_t)DR << 5);
+	Buf_Config_register|= ((uint16_t)DR << ADS_DR0);
 	ads_write_register(ADS_Config_register,Buf_Config_register);
 }
 int8_t ads_test_address(uint8_t adresa){
-
 	esp_err_t ret;
 	i2c_cmd_handle_t cmd;
 	cmd = i2c_cmd_link_create();
@@ -191,9 +193,42 @@ uint16_t ads_read_single_mux(uint8_t ulp_V){						//nacteni hodnoty v single mod
 	vTaskDelay(13);
 	while(!(ads_bit_test(ADS_OS))) ;							//cekani na ukonceni prevodu
 	ads_read_register(ADS_Conversion_register, &reg_read);
+//	ESP_LOGI("read_reg_single","reg_read %d MUX %d\n", reg_read, ulp_V);
 	return reg_read;
 
 }
+
+/* nacteni vstupu dle MUX a prepocteni na mV dle nastaveneho zesileni v registru
+ * v pripade chyby nacteni se nevraci esp_OK
+ */
+esp_err_t ads_read_volt_single(uint8_t MUX,float * Volt){
+	uint16_t reg_read;
+	esp_err_t read_error;
+	ads_set_mux(MUX);
+	ads_start_conversion();													//start konverze
+	vTaskDelay(13);
+	while(!(ads_bit_test(ADS_OS))) ;										//cekani na ukonceni prevodu
+	read_error = ads_read_register(ADS_Conversion_register,&reg_read);
+	if(read_error == ESP_OK){
+//		ESP_LOGI("read_volt_single","reg_read %d  MUX %d\n", reg_read, MUX);
+		*Volt = (float)reg_read * (ads_fsr_table[(Buf_Config_register >> ADS_PGA0) & 0X07]);
+		return read_error;
+	}
+	return read_error;
+}
+
+esp_err_t ads_read_volt_cont(float * Volt){
+	uint16_t reg_read;
+	esp_err_t read_error;
+	read_error = ads_read_register(ADS_Conversion_register,&reg_read);
+	if(read_error == ESP_OK){
+//		ESP_LOGI("read_volt_cont","reg_read %d\n", reg_read);
+		*Volt = (float)reg_read * (ads_fsr_table[(Buf_Config_register >> ADS_PGA0) & 0X07]);
+		return read_error;
+	}
+	return read_error;
+}
+
 
 uint16_t ads_read_continual_mux(uint8_t MUX){
 	uint16_t reg_read;

@@ -32,9 +32,9 @@
 #define ADS_PGA0				9
 #define ADS_PGA1				10
 #define ADS_PGA2				11
-//#define ADS_MUX0				12
-//#define ADS_MUX1				13
-//#define ADS_MUX2				14
+#define ADS_MUX_0				12
+#define ADS_MUX_1				13
+#define ADS_MUX_2				14
 #define ADS_OS					15
 
 /*							v/32767
@@ -67,6 +67,7 @@
 #define ADS_DR250				5	//101 : 250 SPS
 #define ADS_DR475				6	//110 : 475 SPS
 #define ADS_DR860				7	//111 : 860 SPS
+
 
 /*mux
 000 : AINP = AIN0 and AINN = AIN1 (default)
@@ -113,6 +114,9 @@ This bit controls the operating mode.
 void ads_init();
 void my_i2c_config();
 void ads_set_gain(uint8_t gain);
+/* nacteni napeti z ads */
+esp_err_t ads_read_volt_single(uint8_t MUX,float * Volt);
+esp_err_t ads_read_volt_cont(float * Volt);
 //void ads_read_config_register();
 int8_t ads_test_address(uint8_t adresa);
 void ads_write_register(uint8_t APR, uint16_t data);
