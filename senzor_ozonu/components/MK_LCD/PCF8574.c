@@ -85,9 +85,7 @@ void pcf8574_write( uint8_t SLA, uint8_t byte ) {
 	i2c_master_write_byte(cmd, SLA, I2C_MASTER_ACK);
 	i2c_master_write_byte(cmd, byte, I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
-	I2C_TAKE_MUTEX_NORET;
 	i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
-	I2C_GIVE_MUTEX_NORET;
 	i2c_cmd_link_delete(cmd);
 //	i2c_driver_delete(I2C_NUM_0);
 
@@ -108,9 +106,7 @@ uint8_t pcf8574_read( uint8_t SLA ) {
 	i2c_master_write_byte(cmd, SLA+1, I2C_MASTER_ACK);
 	i2c_master_read_byte(cmd, &res, I2C_MASTER_NACK);
 	i2c_master_stop(cmd);
-	I2C_TAKE_MUTEX;
 	i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
-	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 //	i2c_driver_delete(I2C_NUM_0);
 

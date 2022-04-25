@@ -3,7 +3,7 @@
 */
 #include <stdio.h>
 #include <string.h>
-//#include "time.h"
+#include "time.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/FreeRTOSConfig.h"
 #include "freertos/task.h"
@@ -44,7 +44,7 @@ void vBlink_Led2(void *arg){
 
 	while(1){
 		gpio_set_level(GPIO_NUM_2, uroven=uroven^1);
-		vTaskDelay(20);
+		vTaskDelay(100);
 	}
 }
 
@@ -102,16 +102,13 @@ void vPrintOzonNaLCD(void *arg){
 	char horni_buf[17];
 
 	while(1){
-		if (xQueuePeek(OzonHandle, &ozonPPM, 10) == pdTRUE) printf("Hodnota ozonu> %f\n", ozonPPM);
-//		if (ozonPPM<10)
-//			ozonPPM = ozonPPM;
-			sprintf(horni_buf,"PPM OZONU %1.1f0", ozonPPM);
-			vTaskSuspend(VoltagereadHandle);
-			vTaskSuspend(PrintTempHumNaLCD);
+		if (xQueuePeek(OzonHandle, &ozonPPM, 10) == pdTRUE){
+			printf("Hodnota ozonu> %f\n", ozonPPM);
+			sprintf(horni_buf,"PPM OZON-> %2.1f0", ozonPPM);
+			I2C_TAKE_MUTEX_NORET;
 			lcd_str_al(0, 0, horni_buf, _left);
-			vTaskResume(VoltagereadHandle);
-			vTaskResume(PrintTempHumNaLCD);
-
+			I2C_GIVE_MUTEX_NORET;
+		}
 		vTaskDelay(200);
 	}
 }
@@ -119,14 +116,12 @@ void vPrintOzonNaLCD(void *arg){
 void vTeplotaVlhkostToLCD(void *arg){
 	char buf[17];
 	while(1){
-		vTaskSuspend(VoltagereadHandle);
-		vTaskSuspend(PrintOzonnaLCD);
-		sprintf(buf,"TP %2.1f HM %2.1f",hdc1080_read_temp(),hdc1080_read_hum());
-		printf(buf);
+		sprintf(buf,"T:%.1f%cC H:%.1f%c  ",hdc1080_read_temp(),0xDF,hdc1080_read_hum(),0x25);
+		I2C_TAKE_MUTEX_NORET;
 		lcd_str_al(1, 0, buf, _left);
-		vTaskResume(VoltagereadHandle);
-		vTaskResume(PrintOzonnaLCD);
-		vTaskDelay(100);
+		I2C_GIVE_MUTEX_NORET;
+		printf("%s\n",buf);
+		vTaskDelay(500);
 	}
 }
 
@@ -149,8 +144,6 @@ void app_main()
 	lcd_init();
 	vTaskDelay(10);
 	hdc1080_init();
-	//	ads_init();
-//	ULP_pins_U_global.Vref_U = ads_U_input_single(ulp_Vref_read);
 	led_day_set();
 	led_print(0, "1234");
 	lcd_str("start");
