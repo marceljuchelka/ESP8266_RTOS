@@ -53,13 +53,6 @@ void vBlink_Led2(void *arg){
 
 
 
-void vText2(void *arg){
-while(1){
-	printf("Text2 \n");
-	vTaskDelay(1500/portTICK_PERIOD_MS);
-	}
-}
-
 void vPrintFreeMemory(void *arg) {
 	while (1) {
 		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());
@@ -119,31 +112,51 @@ void vTeplotaVlhkostToLCD(void *arg){
 	}
 }
 
-void vTest_print2(void *arg){
+//void vTest_print2(void *arg){
 //	ESP_LOGI("print2","created");
-	while (1) {
-//		vTaskDelay(20);
+//	while (1) {
+////		vTaskDelay(20);
 //		ESP_LOGI("print2","while");
-		printf("print test2\n");
+//		printf("print test2\n");
 //		ESP_LOGI("print2","kill");
-		vTaskDelete(PrintTest2);
-		vTaskDelay(50);
-	}
-}
-
-void vTest_print1(void *arg) {
-	while (1) {
-		printf("print test1\n");
-		vTaskDelay(50);
-		xTaskCreate(vTest_print2, "print test2", 2048, NULL, 1, &PrintTest2);
-		vTaskDelay(50);
-//		ESP_LOGI("print2", "deleted");
 //		vTaskDelete(PrintTest2);
+//		vTaskDelay(50);
+//	}
+//}
+//
+//void vTest_print1(void *arg) {
+//	while (1) {
+//		printf("print test1\n");
+//		vTaskDelay(50);
+//		xTaskCreate(vTest_print2, "print test2", 2048, NULL, 1, &PrintTest2);
+//		vTaskDelay(50);
+////		ESP_LOGI("print2", "deleted");
+////		vTaskDelete(PrintTest2);
+//
+//	}
+//}
 
+void vText2(void *arg) {
+	ESP_LOGI("print2","created");
+	while (1) {
+		vTaskDelay(300 / portTICK_PERIOD_MS);
+		printf("Text2 \n");
+		ESP_LOGI("print2","kill");
+		vTaskDelete(PrintTest2);
 	}
 }
 
 
+void vText1(void *arg) {
+	while (1) {
+		printf("Text1 \n");
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		xTaskCreate(vText2, "text2", 2048, NULL, 1, &PrintTest2);
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+//		ESP_LOGI("print2","kill");
+//		vTaskDelete(PrintTest2);
+	}
+}
 
 
 void app_main()
@@ -152,9 +165,9 @@ void app_main()
 	printf("start\n");
 	printf("*** senzor ozonu ***\n");
 
-//	OzonHandle = xQueueCreate(1,sizeof(float));
+	OzonHandle = xQueueCreate(1,sizeof(float));
 
-//	my_i2c_config();
+	my_i2c_config();
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
 	vTaskDelay(10);
 	ULP_init();
@@ -169,7 +182,7 @@ void app_main()
 	led_print(0, "1234");
 	lcd_str("start");
 	vTaskDelay(200);
-//	wifi_init();
+	wifi_init();
 
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
 //	printf("napeti baterie %f\n" , ads_U_input_single(ulp_Vbat_read));
@@ -185,10 +198,11 @@ void app_main()
 	xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle);
 	xTaskCreate(vPrintOzonNaLCD, "print na LCD", 2048, NULL, 1, &PrintOzonnaLCD);
 	xTaskCreate(vTeplotaVlhkostToLCD, "print temhum na LCD", 2048, NULL, 1, &PrintTempHumNaLCD);
-	xTaskCreate(vTest_print1, "print test 1", 2048, NULL, 1, &PrintTest1);
-	while(1){
-//		ESP_LOGI("Main"," while");
-	}
+	xTaskCreate(vText1, "print test 1", 2048, NULL, 1, &PrintTest1);
+
+//	while(1){
+////		ESP_LOGI("Main"," while");
+//	}
 
 
 }
