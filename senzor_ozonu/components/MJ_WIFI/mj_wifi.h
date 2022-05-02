@@ -8,6 +8,31 @@
 #ifndef COMPONENTS_MJ_WIFI_MJ_WIFI_H_
 #define COMPONENTS_MJ_WIFI_MJ_WIFI_H_
 
+#include <stdio.h>
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "esp_system.h"
+#include "esp_log.h"
+#include "esp_err.h"
+#include "esp_netif.h"
+#include "esp_event.h"
+#include "esp_wifi.h"
+#include "esp_sntp.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "driver/adc.h"
+#include "lwip/err.h"
+#include "lwip/sys.h"
+//#include "lwip/apps/sntp.h"
+//#include "sntp.h"
+//#include "time.h"
+#include <netdb.h>
+#include "mj_wifi.h"
+#include "sdkconfig.h"
+
+
 /* deklarace */
 #define witty  0
 #if witty == 1
@@ -33,5 +58,7 @@ enum {
 	jas_wifi,
 	restart_wifi,
 };
+
+void wifi_init();
 
 #endif /* COMPONENTS_MJ_WIFI_MJ_WIFI_H_ */

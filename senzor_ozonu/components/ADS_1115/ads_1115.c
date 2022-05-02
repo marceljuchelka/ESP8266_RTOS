@@ -90,7 +90,7 @@ void ads_write_register(uint8_t APR, uint16_t data){
 	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
 	I2C_GIVE_MUTEX_NORET;
 	i2c_cmd_link_delete(cmd);
-	if(ret != ESP_OK) ESP_LOGE(TAG,"chyba write register %d \n" , ESP_OK);;
+	if(ret != ESP_OK) ESP_LOGE(TAG,"chyba write register %d \n" , ESP_OK);
 
 //	i2c_start();
 //	i2c_write(ads_i2c_address);

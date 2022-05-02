@@ -24,6 +24,7 @@
 #include "../components/MK_LCD/mk_lcd44780.h"
 #include "../components/MK_I2C/mk_i2c.h"
 #include "../components/MJ_HDC1080/hdc1080.h"
+#include "../MJ_WIFI/mj_wifi.h"
 
 #define MB_LED	GPIO_NUM_2
 
@@ -31,6 +32,8 @@ TaskHandle_t	BlikLedMBHandle;
 TaskHandle_t	PrintFreeMemoryHandle;
 TaskHandle_t	PrintOzonnaLCD;
 TaskHandle_t	PrintTempHumNaLCD;
+TaskHandle_t	PrintTest1;
+TaskHandle_t	PrintTest2;
 
 
 
@@ -58,18 +61,9 @@ while(1){
 }
 
 void vPrintFreeMemory(void *arg) {
-//	uint8_t MUX = 0;
 	while (1) {
-//		printf("BlikLedMBHandle: %d \n", uxTaskGetStackHighWaterMark(BlikLedMBHandle));
-		printf("volna pamet %d\n", esp_get_free_heap_size());
-		printf("vPrintFreeMemory: %d \n", uxTaskGetStackHighWaterMark(NULL));
-//		printf("MUX %d   hodnota: %f \n", MUX, ads_U_input_single(MUX));
-//		printf("Baterie %f \n",ULP_Battery_check1());
-//		printf("Baterie napeti    Referencni napeti    hodnota ozonu je\n");
-//		printf(" %f         %f       %f\n\n\n", ads_U_input_single(ulp_Vbat_read), ads_U_input_single(ulp_Vref_read), ULP_Vgas_read_PPM());
-//		printf("OZON > %f\n",ULP_Vgas_read_PPM());
-
-		vTaskDelay(5000 / portTICK_PERIOD_MS);
+		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());
+		vTaskDelay(200 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -125,6 +119,33 @@ void vTeplotaVlhkostToLCD(void *arg){
 	}
 }
 
+void vTest_print2(void *arg){
+//	ESP_LOGI("print2","created");
+	while (1) {
+//		vTaskDelay(20);
+//		ESP_LOGI("print2","while");
+		printf("print test2\n");
+//		ESP_LOGI("print2","kill");
+		vTaskDelete(PrintTest2);
+		vTaskDelay(50);
+	}
+}
+
+void vTest_print1(void *arg) {
+	while (1) {
+		printf("print test1\n");
+		vTaskDelay(50);
+		xTaskCreate(vTest_print2, "print test2", 2048, NULL, 1, &PrintTest2);
+		vTaskDelay(50);
+//		ESP_LOGI("print2", "deleted");
+//		vTaskDelete(PrintTest2);
+
+	}
+}
+
+
+
+
 void app_main()
 {
 	vTaskDelay(200);
@@ -148,6 +169,7 @@ void app_main()
 	led_print(0, "1234");
 	lcd_str("start");
 	vTaskDelay(200);
+//	wifi_init();
 
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
 //	printf("napeti baterie %f\n" , ads_U_input_single(ulp_Vbat_read));
@@ -155,7 +177,7 @@ void app_main()
 
 
 	/*spusteni tasku  */
-//	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
+	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
 //	xTaskCreate(pxTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)
 	xTaskCreate(vULP_VoltageRead, "voltage read", 1500, NULL, 1, &VoltagereadHandle);
 //	xTaskCreate(vPrintOzonNaLED, "print ozon", 2048, NULL, 1, NULL);
@@ -163,6 +185,7 @@ void app_main()
 	xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle);
 	xTaskCreate(vPrintOzonNaLCD, "print na LCD", 2048, NULL, 1, &PrintOzonnaLCD);
 	xTaskCreate(vTeplotaVlhkostToLCD, "print temhum na LCD", 2048, NULL, 1, &PrintTempHumNaLCD);
+	xTaskCreate(vTest_print1, "print test 1", 2048, NULL, 1, &PrintTest1);
 	while(1){
 //		ESP_LOGI("Main"," while");
 	}
