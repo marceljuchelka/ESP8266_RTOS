@@ -13,6 +13,7 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
+#include "esp_flash_partitions.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "portmacro.h"
@@ -57,6 +58,8 @@ void vText2(void *arg) {
 	while (1) {
 		vTaskDelay(300 / portTICK_PERIOD_MS);
 		printf("Text2 \n");
+		ESP_LOGI("print2","kill");
+		vTaskDelete(Print2Handle);
 	}
 }
 
@@ -67,23 +70,54 @@ void vText1(void *arg) {
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 		xTaskCreate(vText2, "text2", 2048, NULL, 1, &Print2Handle);
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
-		ESP_LOGI("print2","kill");
-		vTaskDelete(Print2Handle);
+//		ESP_LOGI("print2","kill");
+//		vTaskDelete(Print2Handle);
 	}
 }
 
 
+typedef struct {
+	uint8_t pocitadlo;
+	char	text[128];
+} T_FLASH_DATA;
+#define flash_data_base		0x1FC*0x1000		//adresa ulozeni dat
+#define flash_sector_size	0x1000				//velikost sektoru- 4096 Byte
+#define flash_addres 		flash_data_base		//
 
-//void vPrintFreeMemory(void *arg) {
-//	while (1) {
-//		printf("Task1: %d \n", uxTaskGetStackHighWaterMark(task1hadle));
-//		printf("Task2: %d \n", uxTaskGetStackHighWaterMark(task2hadle));
-//		printf("blikled: %d \n", uxTaskGetStackHighWaterMark(task3hadle));
-//		vTaskDelay(1000 / portTICK_PERIOD_MS);
-//	}
-//}
+void save_data_flash(void *arg){
+	esp_err_t esp_error;
+	T_FLASH_DATA flashdata = {.pocitadlo = 23,.text = "Toto je test flash"};
+	printf("save pocitadlo %d text %s\n ",flashdata.pocitadlo, flashdata.text);
+	esp_error = spi_flash_write(flash_addres, (uint32_t*)&flashdata, sizeof(flashdata));
+//	spi_flash_erase_sector(0)
+	if(esp_error == ESP_OK) printf("save OK\n");
+	else printf ("save error %s\n", esp_err_to_name(esp_error));
+}
+
+void read_data_flash(void *arg){
+	esp_err_t esp_error;
+	T_FLASH_DATA flashdata = {.pocitadlo = 0,.text = "neni text"};
+	esp_error = spi_flash_read(flash_addres, (uint32_t*)&flashdata, sizeof(flashdata));
+	if(esp_error == ESP_OK)
+		printf("read pocitadlo %d text %s\n ",flashdata.pocitadlo, flashdata.text);
+	else printf("read error %s\n", esp_err_to_name(esp_error));
+}
+
 void app_main()
 {
+	printf("velikost flash %d\n", spi_flash_get_chip_size());
+
+	read_data_flash(0);
+	save_data_flash(0);
+	read_data_flash(0);
+	printf("mazani sector 0 %s\n", esp_err_to_name(spi_flash_erase_sector(0x1FC)));
+	read_data_flash(0);
+	save_data_flash(0);
+	read_data_flash(0);
+	vTaskDelay(200);
+	printf("mazani sector 0 %s\n", esp_err_to_name(spi_flash_erase_sector(0x1FC)));
+
+
 	xTaskCreate(vText1, "text1", 2048, NULL, 1, &Print1Handle);
 //	xTaskCreate(vText2, "text2", 512, NULL, 1, &Print2Handle);
 	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 2, NULL);
