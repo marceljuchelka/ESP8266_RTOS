@@ -60,7 +60,7 @@ void vPrintFreeMemory(void *arg) {
 void app_main()
 {
 	printf("start\n");
-	printf("*** senzor ozonu ***\n");
+	printf("*** RTOS VZOR ***\n");
 	vTaskDelay(400);
 
 	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
