@@ -53,12 +53,7 @@ void vBlink_Led2(void *arg){
 
 
 
-void vPrintFreeMemory(void *arg) {
-	while (1) {
-		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());
-		vTaskDelay(200 / portTICK_PERIOD_MS);
-	}
-}
+
 
 void print_PPM(void *arg){
 	while(1){
@@ -158,6 +153,12 @@ void vText1(void *arg) {
 	}
 }
 
+void vPrintFreeMemory(void *arg) {
+	while (1) {
+		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());
+		vTaskDelay(200 / portTICK_PERIOD_MS);
+	}
+}
 
 void app_main()
 {
@@ -167,7 +168,7 @@ void app_main()
 
 	OzonHandle = xQueueCreate(1,sizeof(float));
 
-	my_i2c_config();
+//	my_i2c_config();
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
 	vTaskDelay(10);
 	ULP_init();
@@ -181,7 +182,7 @@ void app_main()
 	led_day_set();
 	led_print(0, "1234");
 	lcd_str("start");
-	vTaskDelay(200);
+	vTaskDelay(100);
 	wifi_init();
 
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
@@ -190,7 +191,7 @@ void app_main()
 
 
 	/*spusteni tasku  */
-	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
+//	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
 //	xTaskCreate(pxTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)
 	xTaskCreate(vULP_VoltageRead, "voltage read", 1500, NULL, 1, &VoltagereadHandle);
 //	xTaskCreate(vPrintOzonNaLED, "print ozon", 2048, NULL, 1, NULL);
@@ -200,9 +201,10 @@ void app_main()
 	xTaskCreate(vTeplotaVlhkostToLCD, "print temhum na LCD", 2048, NULL, 1, &PrintTempHumNaLCD);
 	xTaskCreate(vText1, "print test 1", 2048, NULL, 1, &PrintTest1);
 
-//	while(1){
-////		ESP_LOGI("Main"," while");
-//	}
+	while(1){
+		vTaskDelay(100);
+		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());
+	}
 
 
 }
