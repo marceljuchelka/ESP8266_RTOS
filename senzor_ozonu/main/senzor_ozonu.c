@@ -18,13 +18,22 @@
 #include "driver/uart.h"
 #include "portmacro.h"
 #include "sdkconfig.h"
+
+#include "esp_wifi.h"
+#include "esp_netif.h"
+#include "esp_event.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "tcpip_adapter.h"
+
 #include "../components/ADS_1115/ads_1115.h"
 #include "../components/ULP/ulp.h"
 #include "../components/TM_1637_LED/tm_1637_led.h"
 #include "../components/MK_LCD/mk_lcd44780.h"
 #include "../components/MK_I2C/mk_i2c.h"
 #include "../components/MJ_HDC1080/hdc1080.h"
-#include "../MJ_WIFI/mj_wifi.h"
+//#include "../MJ_WIFI/mj_wifi.h"
+#include "../components/MK_WIFI/mk_wifi.h"
 
 #define MB_LED	GPIO_NUM_2
 
@@ -53,6 +62,40 @@ void vBlink_Led2(void *arg){
 
 
 
+void mk_got_ip_cb( char * ip ) {
+
+	tcpip_adapter_ip_info_t ip_info;
+	tcpip_adapter_get_ip_info( TCPIP_ADAPTER_IF_STA, &ip_info );
+
+
+	printf( "[STA] IP: " IPSTR "\n", IP2STR(&ip_info.ip) );
+	printf( "[STA] MASK: " IPSTR "\n", IP2STR(&ip_info.netmask) );
+	printf( "[STA] GW: " IPSTR "\n", IP2STR(&ip_info.gw) );
+
+
+	tcpip_adapter_get_ip_info( TCPIP_ADAPTER_IF_AP, &ip_info );
+
+
+	printf( "[AP] IP: " IPSTR "\n", IP2STR(&ip_info.ip) );
+	printf( "[AP] MASK: " IPSTR "\n", IP2STR(&ip_info.netmask) );
+	printf( "[AP] GW: " IPSTR "\n", IP2STR(&ip_info.gw) );
+
+}
+
+void mk_sta_disconnected_cb( void ) {
+
+	ESP_LOGE("wifi","disconect");
+
+
+}
+
+void mk_ap_join_cb( char * mac ) {
+
+}
+
+void mk_ap_leave_cb( char * mac ) {
+
+}
 
 
 void print_PPM(void *arg){
@@ -183,7 +226,8 @@ void app_main()
 	led_print(0, "1234");
 	lcd_str("start");
 	vTaskDelay(100);
-	wifi_init();
+	nvs_flash_init();
+	mk_wifi_init(WIFI_MODE_STA, mk_got_ip_cb, mk_sta_disconnected_cb, NULL,NULL);
 
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
 //	printf("napeti baterie %f\n" , ads_U_input_single(ulp_Vbat_read));

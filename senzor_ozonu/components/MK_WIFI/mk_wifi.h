@@ -30,8 +30,8 @@
 
 /*:::::::: praca ::::::::*/
 #ifdef PRACA
-#define STA_SSID      	"Atnel-2.4GHz"
-#define STA_PASS      	"55AA55AA55"
+#define STA_SSID      	"TeePee"
+#define STA_PASS      	"07006400aa"
 #endif
 
 /*:::::::: dom ::::::::*/
