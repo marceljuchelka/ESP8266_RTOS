@@ -16,6 +16,8 @@
 /*----------------- USTAWIENIA SNTP ----------------------------*/
 
 #define USE_SNTP					1		// 0-do not use SNTP, 1-use SNTP
+#define SNTP_server				"pool.ntp.org"
+#define CZ_TIME_ZONE			"CET-1CEST,M3.5.0,M10.5.0/3"
 
 
 /*----------------- USTAWIENIA WIFi STA ----------------------------*/

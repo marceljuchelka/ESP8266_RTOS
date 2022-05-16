@@ -184,14 +184,28 @@ void vText2(void *arg) {
 	}
 }
 
+void vPrintTimeToLcd(void *arg){
+	time_t	now;
+	struct tm	timeinfo = {0};
+	char strftime_buf[64] = {0};
+	if (timeinfo.tm_year < (2016 - 1900)) {
+		time(&now);
+		localtime_r(&now, &timeinfo);
+	}
+	strftime(strftime_buf, sizeof(strftime_buf), "Presny cas %H:%M", &timeinfo);
+	I2C_TAKE_MUTEX_NORET;
+	lcd_str_al(3, 0, strftime_buf, _left);
+	I2C_GIVE_MUTEX_NORET;
+}
 
 void vText1(void *arg) {
 	while (1) {
 		printf("Text1 \n");
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 		xTaskCreate(vText2, "text2", 2048, NULL, 1, &PrintTest2);
+		vPrintTimeToLcd(NULL);
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
-//		ESP_LOGI("print2","kill");
+		//		ESP_LOGI("print2","kill");
 //		vTaskDelete(PrintTest2);
 	}
 }
@@ -202,6 +216,9 @@ void vPrintFreeMemory(void *arg) {
 		vTaskDelay(200 / portTICK_PERIOD_MS);
 	}
 }
+
+
+
 
 void app_main()
 {
@@ -228,6 +245,7 @@ void app_main()
 	vTaskDelay(100);
 	nvs_flash_init();
 	mk_wifi_init(WIFI_MODE_STA, mk_got_ip_cb, mk_sta_disconnected_cb, NULL,NULL);
+	mk_sntp_init(SNTP_server);
 
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
 //	printf("napeti baterie %f\n" , ads_U_input_single(ulp_Vbat_read));

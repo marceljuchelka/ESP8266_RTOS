@@ -104,7 +104,8 @@ void mk_sntp_init( char * sntp_srv ) {
 
     sntp_init();
 
-	setenv("TZ", CENTRAL_EUROPEAN_TIME_ZONE, 1);
+//	setenv("TZ", CENTRAL_EUROPEAN_TIME_ZONE, 1);
+	setenv("TZ", CZ_TIME_ZONE, 1);
 	tzset();
 }
 
