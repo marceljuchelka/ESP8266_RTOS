@@ -32,17 +32,46 @@
 #include "../components/MK_LCD/mk_lcd44780.h"
 #include "../components/MK_I2C/mk_i2c.h"
 #include "../components/MJ_HDC1080/hdc1080.h"
-//#include "../MJ_WIFI/mj_wifi.h"
 #include "../components/MK_WIFI/mk_wifi.h"
 
 #define MB_LED	GPIO_NUM_2
 
+
+
+
+/* RTOS tools */
 TaskHandle_t	BlikLedMBHandle;
 TaskHandle_t	PrintFreeMemoryHandle;
 TaskHandle_t	PrintOzonnaLCD;
 TaskHandle_t	PrintTempHumNaLCD;
 TaskHandle_t	PrintTest1;
 TaskHandle_t	PrintTest2;
+TaskHandle_t	PrintTime2LCD;
+
+/* parametry pro ukladani dat na flash disk   */
+#define flash_data_base		0x1FC*0x1000		//adresa ulozeni dat
+#define flash_sector_size	0x1000				//velikost sektoru- 4096 Byte
+#define flash_addres 		flash_data_base		//
+
+
+/* nastaveni webu pro zobrazovani grafu na www.vipro.cz */
+typedef struct {
+	char graf_domain[36];
+	char graf_command[36];
+	char graf_receive[12];
+	float	value;
+}T_GRAF_VAR;
+
+typedef struct{
+	char ssid_actual[15];
+	char psw_actual[15];
+}T_WIFI_PARAM;
+
+
+typedef struct{
+	T_GRAF_VAR data_flash;
+	T_WIFI_PARAM wifi_flash;
+}T_DATA_STORAGE_FLASH;
 
 
 
@@ -122,6 +151,29 @@ void vPrintOzonNaLED(void *arg) {
 	}
 }
 
+
+/* tisk presnz cas na LCD  */
+void vPrintTimeToLcd(void *arg){
+	const char *TAG = "print time LCD";
+	time_t	now;
+	struct tm	timeinfo = {0};
+	char strftime_buf[64] = {0};
+	TickType_t xLastWakeTime;
+	const TickType_t xFrequency = 100;
+	xLastWakeTime = xTaskGetTickCount();
+	while (1) {
+		time(&now);
+		localtime_r(&now, &timeinfo);
+		strftime(strftime_buf, sizeof(strftime_buf), "%d.%m.%y  %H:%M:%S", &timeinfo);
+		ESP_LOGI(TAG, "cas %s", strftime_buf);
+		I2C_TAKE_MUTEX_NORET;
+		lcd_str_al(3, 0, strftime_buf, _left);
+		I2C_GIVE_MUTEX_NORET;
+		vTaskDelayUntil( &xLastWakeTime, xFrequency );
+	}
+}
+
+/*tisk ozonu na LCD */
 void vPrintOzonNaLCD(void *arg){
 	float ozonPPM = 0;
 	char horni_buf[17];
@@ -134,7 +186,7 @@ void vPrintOzonNaLCD(void *arg){
 			lcd_str_al(0, 0, horni_buf, _left);
 			I2C_GIVE_MUTEX_NORET;
 		}
-		vTaskDelay(200);
+		vTaskDelay(300);
 	}
 }
 
@@ -184,26 +236,13 @@ void vText2(void *arg) {
 	}
 }
 
-void vPrintTimeToLcd(void *arg){
-	time_t	now;
-	struct tm	timeinfo = {0};
-	char strftime_buf[64] = {0};
-	if (timeinfo.tm_year < (2016 - 1900)) {
-		time(&now);
-		localtime_r(&now, &timeinfo);
-	}
-	strftime(strftime_buf, sizeof(strftime_buf), "Presny cas %H:%M", &timeinfo);
-	I2C_TAKE_MUTEX_NORET;
-	lcd_str_al(3, 0, strftime_buf, _left);
-	I2C_GIVE_MUTEX_NORET;
-}
+
 
 void vText1(void *arg) {
 	while (1) {
 		printf("Text1 \n");
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 		xTaskCreate(vText2, "text2", 2048, NULL, 1, &PrintTest2);
-		vPrintTimeToLcd(NULL);
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 		//		ESP_LOGI("print2","kill");
 //		vTaskDelete(PrintTest2);
@@ -217,7 +256,22 @@ void vPrintFreeMemory(void *arg) {
 	}
 }
 
-
+//void save_data_flash(void *arg){
+//	esp_err_t esp_error;
+//	esp_error = spi_flash_write(flash_addres, (T_DATA_STORAGE_FLASH*)arg, sizeof((T_DATA_STORAGE_FLASH*)arg));
+//	if(esp_error == ESP_OK) printf("save OK\n");
+//	else printf ("save error %s\n", esp_err_to_name(esp_error));
+//}
+//
+//void read_data_flash(void *arg){
+//	esp_err_t esp_error;
+//
+//	esp_error = spi_flash_read(flash_addres, (T_DATA_STORAGE_FLASH*)arg, sizeof((T_DATA_STORAGE_FLASH*)arg));
+//	if(esp_error == ESP_OK){
+//		printf("read OK\n");
+//		printf("SSID %s  PSW %s\n", arg, arg.wifi_flash.psw_actual);
+//	else printf("read error %s\n", esp_err_to_name(esp_error));
+//}
 
 
 void app_main()
@@ -227,9 +281,18 @@ void app_main()
 	printf("*** senzor ozonu ***\n");
 
 	OzonHandle = xQueueCreate(1,sizeof(float));
+	T_DATA_STORAGE_FLASH data_storage;
+//	read_data_flash(&data_storage);
+//	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
+//
+//	strcpy(data_storage.wifi_flash.ssid_actual, "moje SSID") ;
+//	strcpy(data_storage.wifi_flash.psw_actual,"moje PSW");
+//	save_data_flash(&data_storage);
+//	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
 
 //	my_i2c_config();
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
+
 	vTaskDelay(10);
 	ULP_init();
 	vTaskDelay(10);
@@ -247,6 +310,7 @@ void app_main()
 	mk_wifi_init(WIFI_MODE_STA, mk_got_ip_cb, mk_sta_disconnected_cb, NULL,NULL);
 	mk_sntp_init(SNTP_server);
 
+
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
 //	printf("napeti baterie %f\n" , ads_U_input_single(ulp_Vbat_read));
 
@@ -261,7 +325,8 @@ void app_main()
 	xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle);
 	xTaskCreate(vPrintOzonNaLCD, "print na LCD", 2048, NULL, 1, &PrintOzonnaLCD);
 	xTaskCreate(vTeplotaVlhkostToLCD, "print temhum na LCD", 2048, NULL, 1, &PrintTempHumNaLCD);
-	xTaskCreate(vText1, "print test 1", 2048, NULL, 1, &PrintTest1);
+	xTaskCreate(vText1, "print test 1", 2048, NULL, 2, &PrintTest1);
+	xTaskCreate(vPrintTimeToLcd, "print time LCD", 2048, NULL, 2, &PrintTime2LCD);
 
 	while(1){
 		vTaskDelay(100);
