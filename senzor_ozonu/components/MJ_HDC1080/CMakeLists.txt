@@ -1,6 +1,5 @@
 
-idf_component_register(SRCS "main.c hdc1080.c")
-                    INCLUDE_DIRS "."
-
-                    
-                    
+set(COMPONENT_SRCDIRS ".")
+set(COMPONENT_ADD_INCLUDEDIRS ".")
+set(COMPONENT_REQUIRES)
+register_component()

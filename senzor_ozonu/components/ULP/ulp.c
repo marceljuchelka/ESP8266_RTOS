@@ -44,7 +44,7 @@ void ULP_set_cont(void *arg){
 
 /* nacitani hodnot ze senzoru  	xTaskCreate(vULP_VoltageRead, "voltage read", 1300, NULL, 1, voltagereadHandle); */
 void vULP_VoltageRead(void *arg){
-	const char* TAG =  "ULP_voltage read";
+//	const char* TAG =  "ULP_voltage read";
 	OzonHandle = xQueueCreate(1,sizeof(float));							//aktualni hodnota ozonu
 	fronta_vzorku_napeti = xQueueCreate(5,sizeof(float));				//fronta nacitani hodnot y cidla
 	ULP_set_cont(0);
@@ -63,7 +63,7 @@ void vULP_VoltageRead(void *arg){
 
 /* nacteni a vypocet PPM  ulozeni do ozon queue xTaskCreate(vULP_PPM_read, "PPM read", 1300, NULL, 1, &PPMReadHandle)*/
 void vULP_PPM_read(void *arg) {
-	const char* TAG =  "PPM_read";
+//	const char* TAG =  "PPM_read";
 	float PPM, DataZFronty, prumer = 0;
 	while (1) {
 		while (xQueueReceive(fronta_vzorku_napeti, &DataZFronty, 10)) {
@@ -80,7 +80,7 @@ void vULP_PPM_read(void *arg) {
 
 esp_err_t vULP_kalibrace(){
 	float prumer = 0, napeti = 0;
-	uint8_t opakovani = 5, pokusy = 10;
+	uint8_t opakovani = 5 ;												//, pokusy = 10;
 	ads_bit_set((ADS_MODE),ADS_Single);									//single or Continuous-conversion mode
 	while(ads_read_volt_single(ulp_Vbat_read, &napeti) != ESP_OK);
 	ULP_pins_U_global.Vbatt_U =  napeti;

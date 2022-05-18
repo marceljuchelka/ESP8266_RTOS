@@ -34,7 +34,11 @@
 #ifdef PRACA
 #define STA_SSID      	"TeePee"
 #define STA_PASS      	"07006400aa"
+#define TEST_SSID		"TEST SSID"
+#define TEST_PASS		"TEST PASSWORD"
 #endif
+
+
 
 /*:::::::: dom ::::::::*/
 #ifdef DOM

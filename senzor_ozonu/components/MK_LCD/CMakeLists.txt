@@ -1,3 +1,5 @@
 
-idf_component_register(SRCS "main.c PCF8574.c")
-                    INCLUDE_DIRS "."
+set(COMPONENT_SRCDIRS ".")
+set(COMPONENT_ADD_INCLUDEDIRS ".")
+set(COMPONENT_REQUIRES)
+register_component()

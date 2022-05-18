@@ -32,6 +32,7 @@
 #include "../components/MK_LCD/mk_lcd44780.h"
 #include "../components/MK_I2C/mk_i2c.h"
 #include "../components/MJ_HDC1080/hdc1080.h"
+//#include "../components/MK_WIFI/mk_wifi.h"
 #include "../components/MK_WIFI/mk_wifi.h"
 
 #define MB_LED	GPIO_NUM_2
@@ -256,22 +257,30 @@ void vPrintFreeMemory(void *arg) {
 	}
 }
 
-//void save_data_flash(void *arg){
-//	esp_err_t esp_error;
-//	esp_error = spi_flash_write(flash_addres, (T_DATA_STORAGE_FLASH*)arg, sizeof((T_DATA_STORAGE_FLASH*)arg));
-//	if(esp_error == ESP_OK) printf("save OK\n");
-//	else printf ("save error %s\n", esp_err_to_name(esp_error));
-//}
-//
-//void read_data_flash(void *arg){
-//	esp_err_t esp_error;
-//
-//	esp_error = spi_flash_read(flash_addres, (T_DATA_STORAGE_FLASH*)arg, sizeof((T_DATA_STORAGE_FLASH*)arg));
-//	if(esp_error == ESP_OK){
-//		printf("read OK\n");
-//		printf("SSID %s  PSW %s\n", arg, arg.wifi_flash.psw_actual);
-//	else printf("read error %s\n", esp_err_to_name(esp_error));
-//}
+/* ulozeni dat do flash  */
+void read_data_flash(T_DATA_STORAGE_FLASH *data){
+	esp_err_t esp_error;
+	printf("read sizeof data %d\n", sizeof(*data));
+	esp_error = spi_flash_read(flash_addres, data, sizeof(*data));
+//	vTaskDelay(10);
+	if(esp_error == ESP_OK){
+		printf("read OK\n");
+		ESP_LOGI("read flash","SSID %s  PSW %s\n",data->wifi_flash.ssid_actual,data->wifi_flash.psw_actual);
+	}
+	else printf("read error %s\n", esp_err_to_name(esp_error));
+}
+void save_data_flash(T_DATA_STORAGE_FLASH *data){
+	esp_err_t esp_error;
+	printf("write sizeof data %d\n", sizeof(*data));
+	ESP_LOGI("write flash","SSID %s  PSW %s\n",data->wifi_flash.ssid_actual,data->wifi_flash.psw_actual);
+	spi_flash_erase_sector(0x1FC);
+	esp_error = spi_flash_write(flash_addres, data, sizeof(*data));
+//	vTaskDelay(10);
+	if(esp_error == ESP_OK) printf("save OK\n");
+	else printf ("save error %s\n", esp_err_to_name(esp_error));
+}
+
+
 
 
 void app_main()
@@ -282,13 +291,14 @@ void app_main()
 
 	OzonHandle = xQueueCreate(1,sizeof(float));
 	T_DATA_STORAGE_FLASH data_storage;
-//	read_data_flash(&data_storage);
-//	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
-//
-//	strcpy(data_storage.wifi_flash.ssid_actual, "moje SSID") ;
-//	strcpy(data_storage.wifi_flash.psw_actual,"moje PSW");
-//	save_data_flash(&data_storage);
-//	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
+	read_data_flash(&data_storage);
+	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
+
+	strcpy(data_storage.wifi_flash.ssid_actual, TEST_SSID);
+	strcpy(data_storage.wifi_flash.psw_actual, TEST_PASS);
+	save_data_flash(&data_storage);
+//	printf(" ram SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
+//	spi_flash_erase_sector(0x1FC);
 
 //	my_i2c_config();
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
