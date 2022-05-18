@@ -18,6 +18,7 @@
 #include "../ADS_1115/ads_1115.h"
 #include "../ULP/ulp.h"
 #include "../MK_I2C/mk_i2c.h"
+#include "sdkconfig.h"
 
 
 volatile uint16_t Buf_Config_register;

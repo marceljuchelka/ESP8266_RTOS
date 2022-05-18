@@ -165,11 +165,13 @@ void vPrintTimeToLcd(void *arg){
 	while (1) {
 		time(&now);
 		localtime_r(&now, &timeinfo);
-		strftime(strftime_buf, sizeof(strftime_buf), "%d.%m.%y  %H:%M:%S", &timeinfo);
+		strftime(strftime_buf, sizeof(strftime_buf), "%d.%m.%y  %H:%M", &timeinfo);
 		ESP_LOGI(TAG, "cas %s", strftime_buf);
-		I2C_TAKE_MUTEX_NORET;
-		lcd_str_al(3, 0, strftime_buf, _left);
-		I2C_GIVE_MUTEX_NORET;
+		if (timeinfo.tm_sec == 0) {
+			I2C_TAKE_MUTEX_NORET;
+			lcd_str_al(3, 0, strftime_buf, _left);
+			I2C_GIVE_MUTEX_NORET;
+		}
 		vTaskDelayUntil( &xLastWakeTime, xFrequency );
 	}
 }
@@ -193,13 +195,30 @@ void vPrintOzonNaLCD(void *arg){
 
 void vTeplotaVlhkostToLCD(void *arg){
 	char buf[17];
+	uint16_t delay;
+	float	temp=0, hum=0;
 	while(1){
-		sprintf(buf,"T:%.1f%cC H:%.1f%c  ",hdc1080_read_temp(),0xDF,hdc1080_read_hum(),0x25);
 		I2C_TAKE_MUTEX_NORET;
-		lcd_str_al(1, 0, buf, _left);
+		temp = hdc1080_read_temp();
+//		I2C_GIVE_MUTEX_NORET;
+//		I2C_TAKE_MUTEX_NORET;
+		hum = hdc1080_read_hum();
 		I2C_GIVE_MUTEX_NORET;
-		printf("%s\n",buf);
-		vTaskDelay(500);
+		sprintf(buf, "T:%.1f%cC H:%.1f%c  ", temp, 0xDF, hum, 0x25);
+//		printf("--------------- teplota a vlhkost %s\n", buf);
+//		printf ("---HUM  ---- %0.6f-------\n", hum);
+//		printf ("---TEMP ---- %0.6f-------\n", temp);
+		if ((hum > 99.99) || (temp == 125.0)) {
+			delay = 5;
+		}
+		else
+		{
+			I2C_TAKE_MUTEX_NORET;
+			lcd_str_al(1, 0, buf, _left);
+			I2C_GIVE_MUTEX_NORET;
+			delay = 200;
+		}
+		vTaskDelay(delay);
 	}
 }
 
@@ -285,7 +304,8 @@ void save_data_flash(T_DATA_STORAGE_FLASH *data){
 
 void app_main()
 {
-	vTaskDelay(200);
+//	uart_set_baudrate(UART_NUM_0, 115000);
+	vTaskDelay(20);
 	printf("start\n");
 	printf("*** senzor ozonu ***\n");
 
@@ -335,12 +355,13 @@ void app_main()
 	xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle);
 	xTaskCreate(vPrintOzonNaLCD, "print na LCD", 2048, NULL, 1, &PrintOzonnaLCD);
 	xTaskCreate(vTeplotaVlhkostToLCD, "print temhum na LCD", 2048, NULL, 1, &PrintTempHumNaLCD);
-	xTaskCreate(vText1, "print test 1", 2048, NULL, 2, &PrintTest1);
+//	xTaskCreate(vText1, "print test 1", 2048, NULL, 2, &PrintTest1);
 	xTaskCreate(vPrintTimeToLcd, "print time LCD", 2048, NULL, 2, &PrintTime2LCD);
 
 	while(1){
 		vTaskDelay(100);
 		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());
+//		esp_task_wdt_reset();
 	}
 
 
