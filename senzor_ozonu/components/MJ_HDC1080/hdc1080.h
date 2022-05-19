@@ -20,6 +20,8 @@
 #ifndef MJ_HDC1080_HDC1080_H_
 #define MJ_HDC1080_HDC1080_H_
 
+#include "queue.h"
+
 void my_i2c_config();
 
 
@@ -29,6 +31,8 @@ void my_i2c_config();
 #define test
 
 #define hdc_1080_address 0x40
+
+
 
 typedef struct{
 	float HDC1080_teplota;
@@ -87,8 +91,8 @@ typedef enum {
 }dev_config;
 
 typedef enum{
-	mode_1 = 0,
-	mode_2 = 1,
+	mode_0 = 0,
+	mode_1 = 1,
 }dev_mode;
 
 typedef enum {
@@ -102,6 +106,9 @@ typedef enum {
 	HumMR_8_bit = 0b10,
 }hum_res;
 
+extern QueueHandle_t	TempHandle;			//fronta s teplotou
+extern QueueHandle_t	Humhandle;			//fronta s vlhkosti
+extern TaskHandle_t		hdc1080Task;		//task pro periodicke nacitani vlhkosti a teploty
 
 uint16_t swap_uint16(uint16_t swap_num);
 void hdc1080_init();
@@ -110,6 +117,7 @@ float hdc1080_read_hum();
 float hdc1080_read_temp();
 esp_err_t hdc1080_measure(float *temp, float *hum);
 int hdc1080_test();
+void hdc1080_read (void *arg);
 
 #endif /* MJ_HDC1080_HDC1080_H_ */
 

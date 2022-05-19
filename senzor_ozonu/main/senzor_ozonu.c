@@ -299,7 +299,43 @@ void save_data_flash(T_DATA_STORAGE_FLASH *data){
 	else printf ("save error %s\n", esp_err_to_name(esp_error));
 }
 
+/* tisk na cely displej vse najednou  */
 
+void vPrintToLcd (void *arg){
+	float ozonPPM = 0, hum, temp;
+	time_t	now;
+	uint8_t delay;
+	struct tm	timeinfo = {0};
+	char strftime_buf[64] = {0};
+
+	char buf_1[17], buf_2[17], buf_3[17], buf_4[17];
+
+	while (1) {
+		if (i2c_take_mutex() == ESP_OK) {
+			if (xQueueReceive(OzonHandle, &ozonPPM, 10) == pdTRUE) {
+				printf("Hodnota ozonu> %f\n", ozonPPM);
+				sprintf(buf_1, "PPM OZON-> %2.1f0", ozonPPM);
+				lcd_str_al(0, 0, buf_1, _left);
+			}
+			xQueueReceive(TempHandle, &temp, 0);
+			if (xQueueReceive(Humhandle, &hum, 0) == pdTRUE) {
+				sprintf(buf_2, "T:%.1f%cC H:%.1f%c  ", temp, 0xDF, hum, 0x25);
+				lcd_str_al(1, 0, buf_2, _left);
+			}
+			time(&now);
+			localtime_r(&now, &timeinfo);
+			strftime(strftime_buf, sizeof(strftime_buf), "%d.%m.%y  %H:%M:%S",
+					&timeinfo);
+			lcd_str_al(3, 0, strftime_buf, _left);
+			i2c_give_mutex();
+			delay = 99;
+		} else{
+			delay = 1;
+			i2c_give_mutex();
+		}
+		vTaskDelay(delay);
+	}
+}
 
 
 void app_main()
@@ -353,11 +389,12 @@ void app_main()
 //	xTaskCreate(vPrintOzonNaLED, "print ozon", 2048, NULL, 1, NULL);
 	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1,&BlikLedMBHandle );
 	xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle);
-	xTaskCreate(vPrintOzonNaLCD, "print na LCD", 2048, NULL, 1, &PrintOzonnaLCD);
-	xTaskCreate(vTeplotaVlhkostToLCD, "print temhum na LCD", 2048, NULL, 1, &PrintTempHumNaLCD);
+//	xTaskCreate(vPrintOzonNaLCD, "print na LCD", 2048, NULL, 1, &PrintOzonnaLCD);
+//	xTaskCreate(vTeplotaVlhkostToLCD, "print temhum na LCD", 2048, NULL, 1, &PrintTempHumNaLCD);
 //	xTaskCreate(vText1, "print test 1", 2048, NULL, 2, &PrintTest1);
-	xTaskCreate(vPrintTimeToLcd, "print time LCD", 2048, NULL, 2, &PrintTime2LCD);
-
+//	xTaskCreate(vPrintTimeToLcd, "print time LCD", 2048, NULL, 2, &PrintTime2LCD);
+	xTaskCreate(hdc1080_read, "cteni temp a hum pravidelne", 2048, NULL, 1, hdc1080Task);
+	xTaskCreate(vPrintToLcd, "Print na LCD", 2048, NULL, 1, NULL);
 	while(1){
 		vTaskDelay(100);
 		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());

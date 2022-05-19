@@ -78,7 +78,7 @@ static esp_err_t i2c_create_mutex( void ) {
     return ESP_OK;
 }
 
-
+/* zapni mutex  */
 esp_err_t i2c_take_mutex( void ) {
 
 #if MUTEX_ON == 1
@@ -92,6 +92,8 @@ esp_err_t i2c_take_mutex( void ) {
     return ESP_OK;
 }
 
+
+/* vypni mutex */
 esp_err_t i2c_give_mutex( void ) {
 
 #if MUTEX_ON == 1

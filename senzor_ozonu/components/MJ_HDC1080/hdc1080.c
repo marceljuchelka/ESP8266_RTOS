@@ -20,6 +20,10 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_err.h"
+#include "esp_log.h"
+#include "queue.h"
+#include "task.h"
 #include "driver/i2c.h"
 #include "hdc1080.h"
 #include "../MK_I2C/mk_i2c.h"
@@ -39,6 +43,9 @@
 //	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
 //}
 
+QueueHandle_t	TempHandle;			//fronta s teplotou
+QueueHandle_t	Humhandle;			//fronta s vlhkosti
+TaskHandle_t	hdc1080Task;		//task pro periodicke nacitani vlhkosti a teploty
 
 uint16_t swap_uint16(uint16_t swap_num){
 	uint8_t byte_A;
@@ -58,9 +65,9 @@ esp_err_t hdc_start_mereni(reg_map reg_){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1) | I2C_MASTER_WRITE, I2C_MASTER_ACK);
 	i2c_master_write_byte(cmd, reg_, I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
-	I2C_TAKE_MUTEX;
+//	I2C_TAKE_MUTEX;
 	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
-	I2C_GIVE_MUTEX;
+//	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 	if(ret != ESP_OK) printf("chyba start mereni\n");
 	return ret;
@@ -76,9 +83,9 @@ void hdc1080_write_register(reg_map reg_, uint16_t reg_value){
 	i2c_master_write_byte(cmd, (reg_value>>8), I2C_MASTER_ACK);
 	i2c_master_write_byte(cmd, (reg_value), I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
-	I2C_TAKE_MUTEX_NORET;
+//	I2C_TAKE_MUTEX_NORET;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba reg write");
-	I2C_GIVE_MUTEX_NORET;
+//	I2C_GIVE_MUTEX_NORET;
 	i2c_cmd_link_delete(cmd);
 }
 
@@ -90,9 +97,9 @@ void hdc1080_set_register(reg_map reg_set){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1) | I2C_MASTER_WRITE, I2C_MASTER_ACK);
 	i2c_master_write_byte(cmd, reg_set, I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
-	I2C_TAKE_MUTEX_NORET;
+//	I2C_TAKE_MUTEX_NORET;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba reg set");
-	I2C_GIVE_MUTEX_NORET;
+//	I2C_GIVE_MUTEX_NORET;
 	i2c_cmd_link_delete(cmd);
 }
 
@@ -107,9 +114,9 @@ uint16_t hdc1080_read_register(reg_map set_register){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1)| I2C_MASTER_READ, I2C_MASTER_ACK);
 	i2c_master_read(cmd, buf, 2, I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
-	I2C_TAKE_MUTEX;
+//	I2C_TAKE_MUTEX;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba reg read");
-	I2C_GIVE_MUTEX;
+//	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 	return swap_uint16(res);
 
@@ -119,7 +126,7 @@ float hdc1080_read_hum(){
 	/*nastaveni registru */
 	dev_config config_register = 0;
 	HDC1080_READ_VALUE hodnoty;
-	config_register = (HumMR_11_bit << HRES) | (TempMR_11_bit << TRES) | (mode_1 << MODE);
+	config_register = (HumMR_11_bit << HRES) | (TempMR_11_bit << TRES) | (mode_0 << MODE);
 	hdc1080_write_register(reg_Configuration, config_register);
 
 	/*start mereni od */
@@ -135,9 +142,9 @@ float hdc1080_read_hum(){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1)| I2C_MASTER_READ, I2C_MASTER_ACK);
 	i2c_master_read(cmd, &hodnoty.bytes[2], 2, I2C_MASTER_LAST_NACK);
 	i2c_master_stop(cmd);
-	I2C_TAKE_MUTEX;
+//	I2C_TAKE_MUTEX;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba hum");
-	I2C_GIVE_MUTEX;
+//	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 
 	/* vypocet hodnot  */
@@ -152,7 +159,7 @@ float hdc1080_read_temp(){
 	float temp_F = 0;
 	/*nastaveni registru */
 	dev_config config_register = 0;
-	config_register = (HumMR_11_bit << HRES) | (TempMR_11_bit << TRES) | (mode_1 << MODE);
+	config_register = (HumMR_11_bit << HRES) | (TempMR_11_bit << TRES) | (mode_0 << MODE);
 	hdc1080_write_register(reg_Configuration, config_register);
 
 	/*start mereni  */
@@ -167,9 +174,9 @@ float hdc1080_read_temp(){
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1)| I2C_MASTER_READ, I2C_MASTER_ACK);
 	i2c_master_read(cmd, &hodnoty.bytes[0], 2, I2C_MASTER_LAST_NACK);
 	i2c_master_stop(cmd);
-	I2C_TAKE_MUTEX;
+//	I2C_TAKE_MUTEX;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba temp");
-	I2C_GIVE_MUTEX;
+//	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
 
 	/* vypocet hodnoty */
@@ -180,25 +187,26 @@ float hdc1080_read_temp(){
 esp_err_t hdc1080_measure(float *temp, float *hum){
 	HDC1080_READ_VALUE hodnoty;
 	dev_config config_register = 0;
-	config_register = (HumMR_11_bit << HRES) | (TempMR_11_bit << TRES) | (mode_2 << MODE);
+	config_register = (HumMR_11_bit << HRES) | (TempMR_11_bit << TRES) | (mode_1 << MODE);
 	hdc1080_write_register(reg_Configuration, config_register);
 	hdc_start_mereni(reg_Temperature);
-	vTaskDelay(12/portTICK_PERIOD_MS);
+	vTaskDelay(20/portTICK_PERIOD_MS);
 	i2c_cmd_handle_t cmd;
 	cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);
 	i2c_master_write_byte(cmd, (hdc_1080_address <<1)| I2C_MASTER_READ, I2C_MASTER_ACK);
-	i2c_master_read(cmd, &hodnoty.bytes[0], 4, I2C_MASTER_LAST_NACK);
+	i2c_master_read(cmd, &hodnoty.bytes[0], 4, I2C_MASTER_ACK);
 	i2c_master_stop(cmd);
-	I2C_TAKE_MUTEX;
+//	I2C_TAKE_MUTEX;
 	if(i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS) != ESP_OK) printf("chyba measure");
-	I2C_GIVE_MUTEX;
+//	I2C_GIVE_MUTEX;
 	i2c_cmd_link_delete(cmd);
-	printf("readtemppraw = %X\n", hodnoty.temp_r);
-	printf("readhumpraw = %X\n", hodnoty.humid_r);
+//	printf("readtemppraw = %X\n", hodnoty.temp_r);
+//	printf("readhumpraw = %X\n", hodnoty.humid_r);
+	*hum = ((float)swap_uint16(hodnoty.humid_r)*100)/65536;
 	*temp = swap_uint16(hodnoty.temp_r);
 	*temp = (*temp)/(0xFFFF)*(165)-(40);
-	printf("temp = %2.2f",*temp);
+//	printf("temp = %2.2f",*temp);
  	return ESP_OK;
 }
 
@@ -231,5 +239,29 @@ void hdc1080_init(){
 	printf("config registrer device ID = %d\n", hdc1080_read_register(reg_DeviceID));
 }
 
-
-
+/* task na pravidelne cteni teploty a vlhkosti  - ulozeni do front */
+void hdc1080_read (void *arg){
+	static char *TAG = "hdc1080_Read";
+	float temp, hum;
+	uint16_t delay;
+	TempHandle = xQueueCreate(1,sizeof(float));
+	Humhandle = xQueueCreate(1,sizeof(float));
+	while(1){
+		if(i2c_take_mutex() == ESP_OK){
+			ESP_LOGI(TAG,"OK nacteni I2C");
+//			temp = hdc1080_read_temp();
+//			hum = hdc1080_read_hum();
+			hdc1080_measure(&temp, &hum);
+			xQueueSendToBack(TempHandle,&temp,0);
+			xQueueSendToBack(Humhandle,&hum,0);
+			printf("--------------------temp = %.1f  Hum = %.1f\n",temp,hum);
+			delay = 300;
+			I2C_GIVE_MUTEX_NORET;
+		}
+		else {
+			ESP_LOGE(TAG,"chyba nacteni I2C");
+			delay = 5;
+		}
+		vTaskDelay(delay);
+	}
+}
