@@ -48,6 +48,7 @@ TaskHandle_t	PrintTempHumNaLCD;
 TaskHandle_t	PrintTest1;
 TaskHandle_t	PrintTest2;
 TaskHandle_t	PrintTime2LCD;
+TaskHandle_t 	PrintToLcdHandle;
 
 /* parametry pro ukladani dat na flash disk   */
 #define flash_data_base		0x1FC*0x1000		//adresa ulozeni dat
@@ -313,8 +314,9 @@ void vPrintToLcd (void *arg){
 	while (1) {
 		if (i2c_take_mutex() == ESP_OK) {
 			if (xQueueReceive(OzonHandle, &ozonPPM, 10) == pdTRUE) {
-				printf("Hodnota ozonu> %f\n", ozonPPM);
-				sprintf(buf_1, "PPM OZON-> %2.1f0", ozonPPM);
+				if(ozonPPM < 0) ozonPPM = 0;
+//				printf("Hodnota ozonu> %f\n", ozonPPM);
+				sprintf(buf_1, "OZON-> %2.1f0 PPM ", ozonPPM);
 				lcd_str_al(0, 0, buf_1, _left);
 			}
 			xQueueReceive(TempHandle, &temp, 0);
@@ -328,7 +330,7 @@ void vPrintToLcd (void *arg){
 					&timeinfo);
 			lcd_str_al(3, 0, strftime_buf, _left);
 			i2c_give_mutex();
-			delay = 99;
+			delay = 70;
 		} else{
 			delay = 1;
 			i2c_give_mutex();
@@ -385,19 +387,26 @@ void app_main()
 	/*spusteni tasku  */
 //	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
 //	xTaskCreate(pxTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)
-	xTaskCreate(vULP_VoltageRead, "voltage read", 1500, NULL, 1, &VoltagereadHandle);
+	xTaskCreate(vULP_VoltageRead, "voltage read", 400, NULL, 1, &VoltagereadHandle);
 //	xTaskCreate(vPrintOzonNaLED, "print ozon", 2048, NULL, 1, NULL);
 	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1,&BlikLedMBHandle );
-	xTaskCreate(vULP_PPM_read, "PPM read", 1500, NULL, 1, &PPMReadHandle);
+	xTaskCreate(vULP_PPM_read, "PPM read", 400, NULL, 1, &PPMReadHandle);
 //	xTaskCreate(vPrintOzonNaLCD, "print na LCD", 2048, NULL, 1, &PrintOzonnaLCD);
 //	xTaskCreate(vTeplotaVlhkostToLCD, "print temhum na LCD", 2048, NULL, 1, &PrintTempHumNaLCD);
 //	xTaskCreate(vText1, "print test 1", 2048, NULL, 2, &PrintTest1);
 //	xTaskCreate(vPrintTimeToLcd, "print time LCD", 2048, NULL, 2, &PrintTime2LCD);
-	xTaskCreate(hdc1080_read, "cteni temp a hum pravidelne", 2048, NULL, 1, hdc1080Task);
-	xTaskCreate(vPrintToLcd, "Print na LCD", 2048, NULL, 1, NULL);
+	xTaskCreate(hdc1080_read, "cteni temp a hum pravidelne", 400, NULL, 1, &hdc1080Task);
+	xTaskCreate(vPrintToLcd, "Print na LCD", 1600, NULL, 1, &PrintToLcdHandle);
 	while(1){
 		vTaskDelay(100);
 		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());
+		printf("vULP voltage read: %d \n", uxTaskGetStackHighWaterMark(VoltagereadHandle));
+		printf("vULP PPM read: %d \n", uxTaskGetStackHighWaterMark(PPMReadHandle));
+		printf("HDC1080read: %d \n", uxTaskGetStackHighWaterMark(hdc1080Task));
+		printf("Print to lcd: %d \n", uxTaskGetStackHighWaterMark(PrintToLcdHandle));
+		printf("Blikled: %d \n", uxTaskGetStackHighWaterMark(BlikLedMBHandle));
+
+
 //		esp_task_wdt_reset();
 	}
 

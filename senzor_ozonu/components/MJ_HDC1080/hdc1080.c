@@ -248,14 +248,14 @@ void hdc1080_read (void *arg){
 	Humhandle = xQueueCreate(1,sizeof(float));
 	while(1){
 		if(i2c_take_mutex() == ESP_OK){
-			ESP_LOGI(TAG,"OK nacteni I2C");
+//			ESP_LOGI(TAG,"OK nacteni I2C");
 //			temp = hdc1080_read_temp();
 //			hum = hdc1080_read_hum();
 			hdc1080_measure(&temp, &hum);
 			xQueueSendToBack(TempHandle,&temp,0);
 			xQueueSendToBack(Humhandle,&hum,0);
-			printf("--------------------temp = %.1f  Hum = %.1f\n",temp,hum);
-			delay = 300;
+//			printf("--------------------temp = %.1f  Hum = %.1f\n",temp,hum);
+			delay = 500;
 			I2C_GIVE_MUTEX_NORET;
 		}
 		else {
