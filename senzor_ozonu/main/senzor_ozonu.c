@@ -50,6 +50,17 @@ TaskHandle_t	PrintTest2;
 TaskHandle_t	PrintTime2LCD;
 TaskHandle_t 	PrintToLcdHandle;
 
+/* wifi graf parametry   https://grafy.vipro.cz/www/sensor/receive/?module=marcel&sensor[testovaci]=14.25*/
+#define graf_url	"https://grafy.vipro.cz"
+#define graf_modul "/www/sensor/receive/?module"
+#define graf_user "marcel&sensor["
+#define sen_ozon	"ozon"
+#define sen_temp	"teplota"
+#define sen_hum		"vlhkost"
+
+
+
+
 /* parametry pro ukladani dat na flash disk   */
 #define flash_data_base		0x1FC*0x1000		//adresa ulozeni dat
 #define flash_sector_size	0x1000				//velikost sektoru- 4096 Byte
@@ -57,12 +68,10 @@ TaskHandle_t 	PrintToLcdHandle;
 
 
 /* nastaveni webu pro zobrazovani grafu na www.vipro.cz */
-typedef struct {
-	char graf_domain[36];
-	char graf_command[36];
-	char graf_receive[12];
-	float	value;
-}T_GRAF_VAR;
+typedef struct  {
+	char graf_senzor_name[12];
+	float graf_hodnota;
+} T_GRAF_VAR;
 
 typedef struct{
 	char ssid_actual[15];
@@ -75,8 +84,28 @@ typedef struct{
 	T_WIFI_PARAM wifi_flash;
 }T_DATA_STORAGE_FLASH;
 
+/* odeslani na web graf https://grafy.vipro.cz/www/sensor/receive/?module=marcel&sensor[testovaci]=14.25 */
 
+esp_err_t web_send_graf(T_GRAF_VAR *hodnoty){
+	char *TAG = "web send graf";
+	printf("delka hodnoty %d\n",strlen(hodnoty[0].graf_senzor_name));
+	char graf_buffer[218], base_buffer[64];
+	sprintf(graf_buffer,"%s%s=%s", graf_url, graf_modul, graf_user);
 
+	printf("%s\n", graf_buffer);
+	for(uint8_t i = 0;i<5;i++)	{
+		if(strlen(hodnoty->graf_senzor_name)) {
+//			printf("hodnota %s delka stringu %d\n ",(hodnoty->graf_senzor_name), strlen(hodnoty->graf_senzor_name));
+			sprintf(base_buffer,"%s%s]=%2.1f,",graf_user, hodnoty->graf_senzor_name,hodnoty->graf_hodnota);
+			strcat(graf_buffer,base_buffer);
+			printf("%s\n", base_buffer);
+		}
+		hodnoty++;
+	}
+	printf("%s\n", graf_buffer);
+	ESP_LOGI(TAG,"test");
+	return ESP_OK;
+}
 
 void vBlink_Led2(void *arg){
 	gpio_config_t gpio_cfg;
@@ -348,15 +377,30 @@ void app_main()
 	printf("*** senzor ozonu ***\n");
 
 	OzonHandle = xQueueCreate(1,sizeof(float));
-	T_DATA_STORAGE_FLASH data_storage;
-	read_data_flash(&data_storage);
-	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
-
-	strcpy(data_storage.wifi_flash.ssid_actual, TEST_SSID);
-	strcpy(data_storage.wifi_flash.psw_actual, TEST_PASS);
-	save_data_flash(&data_storage);
+//	T_DATA_STORAGE_FLASH data_storage;
+//	read_data_flash(&data_storage);
+//	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
+//
+//	strcpy(data_storage.wifi_flash.ssid_actual, TEST_SSID);
+//	strcpy(data_storage.wifi_flash.psw_actual, TEST_PASS);
+//	save_data_flash(&data_storage);
 //	printf(" ram SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
 //	spi_flash_erase_sector(0x1FC);
+
+	T_GRAF_VAR graf_data[5] = {0};
+	graf_data[0].graf_hodnota = 25;
+	strcpy(graf_data[0].graf_senzor_name,sen_ozon);
+	graf_data[1].graf_hodnota = 30;
+	strcpy(graf_data[1].graf_senzor_name,sen_temp);
+	graf_data[2].graf_hodnota = 41;
+	strcpy(graf_data[2].graf_senzor_name,sen_hum);
+	for(uint8_t i = 0;i<5;i++){
+		printf("%s  %.1f\n", graf_data[i].graf_senzor_name,graf_data[i].graf_hodnota);
+	}
+		web_send_graf(&graf_data[0]);
+	while(1){
+		;
+	}
 
 //	my_i2c_config();
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
@@ -377,6 +421,8 @@ void app_main()
 	nvs_flash_init();
 	mk_wifi_init(WIFI_MODE_STA, mk_got_ip_cb, mk_sta_disconnected_cb, NULL,NULL);
 	mk_sntp_init(SNTP_server);
+
+
 
 
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
@@ -405,6 +451,7 @@ void app_main()
 		printf("HDC1080read: %d \n", uxTaskGetStackHighWaterMark(hdc1080Task));
 		printf("Print to lcd: %d \n", uxTaskGetStackHighWaterMark(PrintToLcdHandle));
 		printf("Blikled: %d \n", uxTaskGetStackHighWaterMark(BlikLedMBHandle));
+
 
 
 //		esp_task_wdt_reset();
