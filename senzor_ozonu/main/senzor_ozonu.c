@@ -25,7 +25,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "tcpip_adapter.h"
-
+#include "netdb.h"
 #include "../components/ADS_1115/ads_1115.h"
 #include "../components/ULP/ulp.h"
 #include "../components/TM_1637_LED/tm_1637_led.h"
@@ -49,6 +49,7 @@ TaskHandle_t	PrintTest1;
 TaskHandle_t	PrintTest2;
 TaskHandle_t	PrintTime2LCD;
 TaskHandle_t 	PrintToLcdHandle;
+QueueHandle_t	graf_queue_handle;
 
 /* wifi graf parametry   https://grafy.vipro.cz/www/sensor/receive/?module=marcel&sensor[testovaci]=14.25*/
 #define graf_url	"https://grafy.vipro.cz"
@@ -86,25 +87,40 @@ typedef struct{
 
 /* odeslani na web graf https://grafy.vipro.cz/www/sensor/receive/?module=marcel&sensor[testovaci]=14.25 */
 
-esp_err_t web_send_graf(T_GRAF_VAR *hodnoty){
-	char *TAG = "web send graf";
-	printf("delka hodnoty %d\n",strlen(hodnoty[0].graf_senzor_name));
-	char graf_buffer[218], base_buffer[64];
-	sprintf(graf_buffer,"%s%s=%s", graf_url, graf_modul, graf_user);
+void vTask_send_to_web(){
 
-	printf("%s\n", graf_buffer);
-	for(uint8_t i = 0;i<5;i++)	{
-		if(strlen(hodnoty->graf_senzor_name)) {
-//			printf("hodnota %s delka stringu %d\n ",(hodnoty->graf_senzor_name), strlen(hodnoty->graf_senzor_name));
-			sprintf(base_buffer,"%s%s]=%2.1f,",graf_user, hodnoty->graf_senzor_name,hodnoty->graf_hodnota);
-			strcat(graf_buffer,base_buffer);
-			printf("%s\n", base_buffer);
+
+
+}
+
+
+
+
+/* priprava dat na odeslani do webu - mozno az 5 senzoru najednou   */
+void vPriprava_dat_graf(void *arg){
+	T_GRAF_VAR hodnoty[5];
+	char *TAG = "web send graf";
+	char graf_buffer[218], base_buffer[64];
+	int xStatus = 0;
+
+	while (1) {
+		xStatus = xQueueReceive(graf_queue_handle, &hodnoty, 10);
+		if (xStatus == pdPASS) {
+			sprintf(graf_buffer, "%s%s=%s", graf_url, graf_modul, graf_user);
+			printf("graf_buffer - %s\n", graf_buffer);
+			for (uint8_t i = 0; i < 5; i++) {
+				if (strlen(hodnoty[i].graf_senzor_name) > 0) {
+					printf("hodnota %s delka stringu %d\n ",(hodnoty[i].graf_senzor_name), strlen(hodnoty[i].graf_senzor_name));
+					sprintf(base_buffer, "%s%s]=%2.1f,", graf_user,	hodnoty[i].graf_senzor_name, hodnoty[i].graf_hodnota);
+					strcat(graf_buffer, base_buffer);
+					printf("base buffer ------%s\n", base_buffer);
+				}
+			}
+			printf("finito %s\n", graf_buffer);
+			ESP_LOGI(TAG, "test");
+			vTaskDelay(200);
 		}
-		hodnoty++;
 	}
-	printf("%s\n", graf_buffer);
-	ESP_LOGI(TAG,"test");
-	return ESP_OK;
 }
 
 void vBlink_Led2(void *arg){
@@ -333,6 +349,7 @@ void save_data_flash(T_DATA_STORAGE_FLASH *data){
 
 void vPrintToLcd (void *arg){
 	float ozonPPM = 0, hum, temp;
+	T_GRAF_VAR graf_que_var;
 	time_t	now;
 	uint8_t delay;
 	struct tm	timeinfo = {0};
@@ -344,6 +361,9 @@ void vPrintToLcd (void *arg){
 		if (i2c_take_mutex() == ESP_OK) {
 			if (xQueueReceive(OzonHandle, &ozonPPM, 10) == pdTRUE) {
 				if(ozonPPM < 0) ozonPPM = 0;
+				strcpy(graf_que_var.graf_senzor_name,sen_ozon);
+				graf_que_var.graf_hodnota = ozonPPM;
+				xQueueSendToBack(graf_queue_handle,&graf_que_var,0);
 //				printf("Hodnota ozonu> %f\n", ozonPPM);
 				sprintf(buf_1, "OZON-> %2.1f0 PPM ", ozonPPM);
 				lcd_str_al(0, 0, buf_1, _left);
@@ -352,6 +372,10 @@ void vPrintToLcd (void *arg){
 			if (xQueueReceive(Humhandle, &hum, 0) == pdTRUE) {
 				sprintf(buf_2, "T:%.1f%cC H:%.1f%c  ", temp, 0xDF, hum, 0x25);
 				lcd_str_al(1, 0, buf_2, _left);
+				strcpy(graf_que_var.graf_senzor_name,sen_hum);
+				graf_que_var.graf_hodnota = hum;
+				strcpy(graf_que_var.graf_senzor_name,sen_temp);
+				graf_que_var.graf_hodnota = temp;
 			}
 			time(&now);
 			localtime_r(&now, &timeinfo);
@@ -377,6 +401,7 @@ void app_main()
 	printf("*** senzor ozonu ***\n");
 
 	OzonHandle = xQueueCreate(1,sizeof(float));
+	graf_queue_handle = xQueueCreate(5,sizeof(T_GRAF_VAR));
 //	T_DATA_STORAGE_FLASH data_storage;
 //	read_data_flash(&data_storage);
 //	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
@@ -387,20 +412,20 @@ void app_main()
 //	printf(" ram SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
 //	spi_flash_erase_sector(0x1FC);
 
-	T_GRAF_VAR graf_data[5] = {0};
-	graf_data[0].graf_hodnota = 25;
-	strcpy(graf_data[0].graf_senzor_name,sen_ozon);
-	graf_data[1].graf_hodnota = 30;
-	strcpy(graf_data[1].graf_senzor_name,sen_temp);
-	graf_data[2].graf_hodnota = 41;
-	strcpy(graf_data[2].graf_senzor_name,sen_hum);
-	for(uint8_t i = 0;i<5;i++){
-		printf("%s  %.1f\n", graf_data[i].graf_senzor_name,graf_data[i].graf_hodnota);
-	}
-		web_send_graf(&graf_data[0]);
-	while(1){
-		;
-	}
+//	T_GRAF_VAR graf_data[5] = {0};
+//	graf_data[0].graf_hodnota = 25;
+//	strcpy(graf_data[0].graf_senzor_name,sen_ozon);
+//	graf_data[1].graf_hodnota = 30;
+//	strcpy(graf_data[1].graf_senzor_name,sen_temp);
+//	graf_data[2].graf_hodnota = 41;
+//	strcpy(graf_data[2].graf_senzor_name,sen_hum);
+//	for(uint8_t i = 0;i<5;i++){
+//		printf("%s  %.1f\n", graf_data[i].graf_senzor_name,graf_data[i].graf_hodnota);
+//	}
+//		web_send_graf(&graf_data[0]);
+//	while(1){
+//		;
+//	}
 
 //	my_i2c_config();
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
@@ -443,6 +468,8 @@ void app_main()
 //	xTaskCreate(vPrintTimeToLcd, "print time LCD", 2048, NULL, 2, &PrintTime2LCD);
 	xTaskCreate(hdc1080_read, "cteni temp a hum pravidelne", 400, NULL, 1, &hdc1080Task);
 	xTaskCreate(vPrintToLcd, "Print na LCD", 1600, NULL, 1, &PrintToLcdHandle);
+//	xTaskCreate(vPriprava_dat_graf, "priprava dat_pro graf" , 4096, NULL, 1, NULL);
+
 	while(1){
 		vTaskDelay(100);
 		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());
