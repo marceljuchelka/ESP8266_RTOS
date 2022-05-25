@@ -10,22 +10,29 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include "FreeRTOSConfig.h"
-#include "esp_system.h"
-#include "esp_spi_flash.h"
-#include "esp_timer.h"
-#include "esp_task_wdt.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
 #include "portmacro.h"
 #include "sdkconfig.h"
 
+#include "esp_system.h"
+#include "esp_spi_flash.h"
+#include "esp_timer.h"
+#include "esp_task_wdt.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
 #include "esp_event.h"
+
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "tcpip_adapter.h"
 #include "netdb.h"
+#include "lwip/sockets.h"
+#include "lwip/err.h"
+#include "lwip/sys.h"
+#include <lwip/netdb.h>
+#include <errno.h>
+
 #include "../components/ADS_1115/ads_1115.h"
 #include "../components/ULP/ulp.h"
 #include "../components/TM_1637_LED/tm_1637_led.h"
@@ -52,15 +59,24 @@ TaskHandle_t 	PrintToLcdHandle;
 QueueHandle_t	graf_queue_handle;
 
 /* wifi graf parametry   https://grafy.vipro.cz/www/sensor/receive/?module=marcel&sensor[testovaci]=14.25*/
-#define graf_url	"https://grafy.vipro.cz"
+#define graf_domain	"grafy.vipro.cz"
+#define graf_url	"http://"graf_domain
 #define graf_modul "/www/sensor/receive/?module"
 #define graf_user "marcel&sensor["
 #define sen_ozon	"ozon"
 #define sen_temp	"teplota"
 #define sen_hum		"vlhkost"
 
+//static const char *dotaz =
+//	"GET " graf_url " HTTP/1.0\r\n"
+//    "Host: "graf_url"\r\n"
+//    "User-Agent: esp-idf/1.0 esp32\r\n"
+//    "\r\n";
 
-
+//const char *req =
+//    "GET "graf_url"\r\n"
+//    "User-Agent: esp-open-rtos/0.1 esp8266\r\n"
+//    "\r\n";
 
 /* parametry pro ukladani dat na flash disk   */
 #define flash_data_base		0x1FC*0x1000		//adresa ulozeni dat
@@ -87,10 +103,97 @@ typedef struct{
 
 /* odeslani na web graf https://grafy.vipro.cz/www/sensor/receive/?module=marcel&sensor[testovaci]=14.25 */
 
-void vTask_send_to_web(){
+void v_send_to_web(char *graf_buf){
+	const char *TAG = "SEND TO WEB";
+//	BaseType_t xStatus;
+	struct addrinfo	*res;
+	struct in_addr *addr;
+	const struct addrinfo hints = {
+        .ai_family = AF_INET,
+        .ai_socktype = SOCK_STREAM,
+    };
 
+    int s, r;
+    char recv_buf[64];
+	char request[256];
+	char *REQUEST = &request[0];
+	sprintf(request,
+			"GET %s HTTP/1.0\r\n"
+			"Host: %s\r\n"
+			"User-Agent: esp-idf/1.0 esp32\r\n"
+			"\r\n", graf_buf,graf_url);
+	printf("posilam %s\n",REQUEST);
+//	while(1){
 
+    /* zjisteni IP serveru   */
+        int err = getaddrinfo("grafy.vipro.cz", "80", &hints, &res);
+        if(err != 0 || res == NULL) {
+            ESP_LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            return;
+        }
+        addr = &((struct sockaddr_in *)res->ai_addr)->sin_addr;
+        ESP_LOGI(TAG, "DNS lookup succeeded. IP=%s", inet_ntoa(*addr));
 
+        /* nastaveni socketu    */
+        s = socket(res->ai_family, res->ai_socktype, 0);
+        if(s < 0) {
+            ESP_LOGE(TAG, "... Failed to allocate socket.");
+            freeaddrinfo(res);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            return;
+        }
+        ESP_LOGI(TAG, "... allocated socket");
+
+        /* kontrola spojeni   */
+        if(connect(s, res->ai_addr, res->ai_addrlen) != 0) {
+            ESP_LOGE(TAG, "... socket connect failed errno=%d", errno);
+            close(s);
+            freeaddrinfo(res);
+            vTaskDelay(4000 / portTICK_PERIOD_MS);
+            return;
+        }
+        ESP_LOGI(TAG, "... connected");
+        freeaddrinfo(res);
+
+        /* odeslani stringu pres socket   */
+        if (write(s, REQUEST, strlen(REQUEST)) < 0) {
+            ESP_LOGE(TAG, "... socket send failed");
+            close(s);
+            vTaskDelay(4000 / portTICK_PERIOD_MS);
+            return;
+        }
+        ESP_LOGI(TAG, "... socket send success");
+
+        /* timeout pro odpoved z webu   */
+        struct timeval receiving_timeout;
+        receiving_timeout.tv_sec = 5;
+        receiving_timeout.tv_usec = 0;
+        if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &receiving_timeout,
+                sizeof(receiving_timeout)) < 0) {
+            ESP_LOGE(TAG, "... failed to set socket receiving timeout");
+            close(s);
+            vTaskDelay(4000 / portTICK_PERIOD_MS);
+            return;
+        }
+        ESP_LOGI(TAG, "... set socket receiving timeout success");
+//        close(s);
+
+        /* nacteni odpovedi z webu    */
+        /* Read HTTP response */
+
+        do {
+        bzero(recv_buf, sizeof(recv_buf));
+            r = read(s, recv_buf, sizeof(recv_buf)-1);
+            for(int i = 0; i < r; i++) {
+//                putchar(recv_buf[i]);
+            }
+        } while(r > 0);
+//        printf("odpoved y webu:  %s\n",recv_buf);
+        vTaskDelay(10);
+        ESP_LOGI(TAG, "... done reading from socket. Last read return=%d errno=%d\r\n", r, errno);
+        close(s);
+        ESP_LOGI(TAG, "end send graf");
 }
 
 
@@ -98,28 +201,23 @@ void vTask_send_to_web(){
 
 /* priprava dat na odeslani do webu - mozno az 5 senzoru najednou   */
 void vPriprava_dat_graf(void *arg){
-	T_GRAF_VAR hodnoty[5];
+	T_GRAF_VAR hodnoty;
 	char *TAG = "web send graf";
-	char graf_buffer[218], base_buffer[64];
-	int xStatus = 0;
-
+	char graf_buffer[218], sensor_buffer[64];
+//	int xStatus = 0;
+//	uint8_t pocitadlo = 0;
 	while (1) {
-		xStatus = xQueueReceive(graf_queue_handle, &hodnoty, 10);
-		if (xStatus == pdPASS) {
-			sprintf(graf_buffer, "%s%s=%s", graf_url, graf_modul, graf_user);
-			printf("graf_buffer - %s\n", graf_buffer);
-			for (uint8_t i = 0; i < 5; i++) {
-				if (strlen(hodnoty[i].graf_senzor_name) > 0) {
-					printf("hodnota %s delka stringu %d\n ",(hodnoty[i].graf_senzor_name), strlen(hodnoty[i].graf_senzor_name));
-					sprintf(base_buffer, "%s%s]=%2.1f,", graf_user,	hodnoty[i].graf_senzor_name, hodnoty[i].graf_hodnota);
-					strcat(graf_buffer, base_buffer);
-					printf("base buffer ------%s\n", base_buffer);
-				}
-			}
-			printf("finito %s\n", graf_buffer);
-			ESP_LOGI(TAG, "test");
-			vTaskDelay(200);
+		vTaskDelay(500);
+		sprintf(graf_buffer, "%s%s=", graf_url, graf_modul);
+//		printf("graf_buffer - %s\n", graf_buffer);
+		while (xQueueReceive(graf_queue_handle, &hodnoty, 0) == pdTRUE) {
+//			printf("hodnota %s delka stringu %d\n ", (hodnoty.graf_senzor_name), strlen(hodnoty.graf_senzor_name));
+			sprintf(sensor_buffer, "%s%s]=%2.1f,", graf_user, hodnoty.graf_senzor_name, hodnoty.graf_hodnota);
+//			printf("sensor buffer ------%s\n", sensor_buffer);
+			strcat(graf_buffer, sensor_buffer);
 		}
+		ESP_LOGI(TAG, "fronta pripravena %s\n", graf_buffer);
+		v_send_to_web(graf_buffer);
 	}
 }
 
@@ -355,7 +453,7 @@ void vPrintToLcd (void *arg){
 	struct tm	timeinfo = {0};
 	char strftime_buf[64] = {0};
 
-	char buf_1[17], buf_2[17], buf_3[17], buf_4[17];
+	char buf_1[17], buf_2[17]; //											buf_3[17], buf_4[17];
 
 	while (1) {
 		if (i2c_take_mutex() == ESP_OK) {
@@ -374,8 +472,10 @@ void vPrintToLcd (void *arg){
 				lcd_str_al(1, 0, buf_2, _left);
 				strcpy(graf_que_var.graf_senzor_name,sen_hum);
 				graf_que_var.graf_hodnota = hum;
+				xQueueSendToBack(graf_queue_handle,&graf_que_var,0);
 				strcpy(graf_que_var.graf_senzor_name,sen_temp);
 				graf_que_var.graf_hodnota = temp;
+				xQueueSendToBack(graf_queue_handle,&graf_que_var,0);
 			}
 			time(&now);
 			localtime_r(&now, &timeinfo);
@@ -402,6 +502,7 @@ void app_main()
 
 	OzonHandle = xQueueCreate(1,sizeof(float));
 	graf_queue_handle = xQueueCreate(5,sizeof(T_GRAF_VAR));
+	xQueueReset(graf_queue_handle);
 //	T_DATA_STORAGE_FLASH data_storage;
 //	read_data_flash(&data_storage);
 //	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
@@ -450,6 +551,7 @@ void app_main()
 
 
 
+
 	//	printf("Referencni napeti je  %f\n", ULP_pins_U_global.Vref_U);
 //	printf("napeti baterie %f\n" , ads_U_input_single(ulp_Vbat_read));
 
@@ -468,7 +570,7 @@ void app_main()
 //	xTaskCreate(vPrintTimeToLcd, "print time LCD", 2048, NULL, 2, &PrintTime2LCD);
 	xTaskCreate(hdc1080_read, "cteni temp a hum pravidelne", 400, NULL, 1, &hdc1080Task);
 	xTaskCreate(vPrintToLcd, "Print na LCD", 1600, NULL, 1, &PrintToLcdHandle);
-//	xTaskCreate(vPriprava_dat_graf, "priprava dat_pro graf" , 4096, NULL, 1, NULL);
+	xTaskCreate(vPriprava_dat_graf, "priprava dat_pro graf" , 4096, NULL, 1, NULL);
 
 	while(1){
 		vTaskDelay(100);
