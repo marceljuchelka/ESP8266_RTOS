@@ -66,6 +66,13 @@ QueueHandle_t	graf_queue_handle;
 #define sen_ozon	"ozon"
 #define sen_temp	"teplota"
 #define sen_hum		"vlhkost"
+#define sen_reboot	"reboot"
+
+#define reboot_TRUE		10
+#define reboot_FALSE	0
+
+
+
 
 //static const char *dotaz =
 //	"GET " graf_url " HTTP/1.0\r\n"
@@ -100,6 +107,10 @@ typedef struct{
 	T_GRAF_VAR data_flash;
 	T_WIFI_PARAM wifi_flash;
 }T_DATA_STORAGE_FLASH;
+
+const T_GRAF_VAR var_reboot_true = {.graf_senzor_name = sen_reboot,.graf_hodnota = reboot_TRUE};
+const T_GRAF_VAR var_reboot_false = {.graf_senzor_name = sen_reboot,.graf_hodnota = reboot_FALSE};
+
 
 /* odeslani na web graf https://grafy.vipro.cz/www/sensor/receive/?module=marcel&sensor[testovaci]=14.25 */
 
@@ -193,7 +204,7 @@ void v_send_to_web(char *graf_buf){
         vTaskDelay(10);
         ESP_LOGI(TAG, "... done reading from socket. Last read return=%d errno=%d\r\n", r, errno);
         close(s);
-        ESP_LOGI(TAG, "end send graf");
+        xQueueSend(graf_queue_handle, &var_reboot_false,0);
 }
 
 
@@ -457,7 +468,7 @@ void vPrintToLcd (void *arg){
 
 	while (1) {
 		if (i2c_take_mutex() == ESP_OK) {
-			if (xQueueReceive(OzonHandle, &ozonPPM, 10) == pdTRUE) {
+			if (xQueueReceive(OzonHandle, &ozonPPM, 0) == pdTRUE) {
 				if(ozonPPM < 0) ozonPPM = 0;
 				strcpy(graf_que_var.graf_senzor_name,sen_ozon);
 				graf_que_var.graf_hodnota = ozonPPM;
@@ -466,6 +477,7 @@ void vPrintToLcd (void *arg){
 				sprintf(buf_1, "OZON-> %2.1f0 PPM ", ozonPPM);
 				lcd_str_al(0, 0, buf_1, _left);
 			}
+
 			xQueueReceive(TempHandle, &temp, 0);
 			if (xQueueReceive(Humhandle, &hum, 0) == pdTRUE) {
 				sprintf(buf_2, "T:%.1f%cC H:%.1f%c  ", temp, 0xDF, hum, 0x25);
@@ -547,6 +559,8 @@ void app_main()
 	nvs_flash_init();
 	mk_wifi_init(WIFI_MODE_STA, mk_got_ip_cb, mk_sta_disconnected_cb, NULL,NULL);
 	mk_sntp_init(SNTP_server);
+
+	xQueueSend(graf_queue_handle, &var_reboot_true,0);
 
 
 
