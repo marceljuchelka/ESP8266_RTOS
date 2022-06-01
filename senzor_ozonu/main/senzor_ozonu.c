@@ -12,6 +12,7 @@
 #include "FreeRTOSConfig.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
+#include "event_groups.h"
 #include "portmacro.h"
 #include "sdkconfig.h"
 
@@ -33,6 +34,8 @@
 #include <lwip/netdb.h>
 #include <errno.h>
 
+
+
 #include "../components/ADS_1115/ads_1115.h"
 #include "../components/ULP/ulp.h"
 #include "../components/TM_1637_LED/tm_1637_led.h"
@@ -41,6 +44,7 @@
 #include "../components/MJ_HDC1080/hdc1080.h"
 //#include "../components/MK_WIFI/mk_wifi.h"
 #include "../components/MK_WIFI/mk_wifi.h"
+#include "../components/MJ_MQTT/mj_mqtt.h"
 
 #define MB_LED	GPIO_NUM_2
 
@@ -56,6 +60,8 @@ TaskHandle_t	PrintTest1;
 TaskHandle_t	PrintTest2;
 TaskHandle_t	PrintTime2LCD;
 TaskHandle_t 	PrintToLcdHandle;
+TaskHandle_t 	HodnotyNaGrafHandle;
+
 QueueHandle_t	graf_queue_handle;
 
 /* wifi graf parametry   https://grafy.vipro.cz/www/sensor/receive/?module=marcel&sensor[testovaci]=14.25*/
@@ -67,6 +73,7 @@ QueueHandle_t	graf_queue_handle;
 #define sen_temp	"teplota"
 #define sen_hum		"vlhkost"
 #define sen_reboot	"reboot"
+#define sen_freemem	"freemem"
 
 #define reboot_TRUE		10
 #define reboot_FALSE	0
@@ -217,8 +224,8 @@ void vPriprava_dat_graf(void *arg){
 	char graf_buffer[218], sensor_buffer[64];
 //	int xStatus = 0;
 //	uint8_t pocitadlo = 0;
-	while (1) {
-		vTaskDelay(500);
+//	while (1) {
+//		vTaskDelay(500);
 		sprintf(graf_buffer, "%s%s=", graf_url, graf_modul);
 //		printf("graf_buffer - %s\n", graf_buffer);
 		while (xQueueReceive(graf_queue_handle, &hodnoty, 0) == pdTRUE) {
@@ -229,7 +236,7 @@ void vPriprava_dat_graf(void *arg){
 		}
 		ESP_LOGI(TAG, "fronta pripravena %s\n", graf_buffer);
 		v_send_to_web(graf_buffer);
-	}
+//	}
 }
 
 void vBlink_Led2(void *arg){
@@ -454,11 +461,44 @@ void save_data_flash(T_DATA_STORAGE_FLASH *data){
 	else printf ("save error %s\n", esp_err_to_name(esp_error));
 }
 
-/* tisk na cely displej vse najednou  */
 
-void vPrintToLcd (void *arg){
-	float ozonPPM = 0, hum, temp;
+void vHodnoty_na_graf(void *arg) {
+	const char *TAG = "hodnoty na graf";
+	EventBits_t x_bit = 0;
 	T_GRAF_VAR graf_que_var;
+	float ozonPPM = 0, hum = 0, temp = 0;
+	while (1) {
+		strcpy(graf_que_var.graf_senzor_name, sen_ozon);
+		xQueueReceive(OzonHandle, &ozonPPM, 0);
+		graf_que_var.graf_hodnota = ozonPPM;
+		xQueueSendToBack(graf_queue_handle, &graf_que_var, 0);
+		xQueueReceive(Humhandle, &hum, 0);
+		strcpy(graf_que_var.graf_senzor_name, sen_hum);
+		graf_que_var.graf_hodnota = hum;
+		xQueueSendToBack(graf_queue_handle, &graf_que_var, 0);
+		strcpy(graf_que_var.graf_senzor_name, sen_temp);
+		xQueueReceive(TempHandle, &temp, 0);
+		graf_que_var.graf_hodnota = temp;
+		xQueueSendToBack(graf_queue_handle, &graf_que_var, 0);
+		/* poslani na graf volna memory  */
+		strcpy(graf_que_var.graf_senzor_name, sen_freemem);
+		graf_que_var.graf_hodnota = esp_get_free_heap_size() / 1000;
+		xQueueSendToBack(graf_queue_handle, &graf_que_var, 0);
+		ESP_LOGI(TAG, "hodnoty OK");
+		printf("-----------------------ozon %0.1f  temp %0.1f   hum %0.1f \n",ozonPPM, temp, hum);
+		vPriprava_dat_graf(NULL);
+		xEventGroupClearBits(xEventTemHumHandle, ux_event_temp | ux_event_hum);
+		vTaskDelete(NULL);
+	}
+}
+
+
+
+/* tisk na cely displej vse najednou  */
+void vPrintToLcd (void *arg){
+	const char *TAG = "print na LCD";
+	float ozonPPM = 0, hum, temp;
+	EventBits_t x_bit = 0;
 	time_t	now;
 	uint8_t delay;
 	struct tm	timeinfo = {0};
@@ -468,27 +508,21 @@ void vPrintToLcd (void *arg){
 
 	while (1) {
 		if (i2c_take_mutex() == ESP_OK) {
-			if (xQueueReceive(OzonHandle, &ozonPPM, 0) == pdTRUE) {
+			if (xQueuePeek(OzonHandle, &ozonPPM, 0) == pdTRUE) {
 				if(ozonPPM < 0) ozonPPM = 0;
-				strcpy(graf_que_var.graf_senzor_name,sen_ozon);
-				graf_que_var.graf_hodnota = ozonPPM;
-				xQueueSendToBack(graf_queue_handle,&graf_que_var,0);
 //				printf("Hodnota ozonu> %f\n", ozonPPM);
 				sprintf(buf_1, "OZON-> %2.1f0 PPM ", ozonPPM);
 				lcd_str_al(0, 0, buf_1, _left);
 			}
 
-			xQueueReceive(TempHandle, &temp, 0);
-			if (xQueueReceive(Humhandle, &hum, 0) == pdTRUE) {
+			if (xQueuePeek(TempHandle, &temp, 0) == pdTRUE){
+				xQueuePeek(Humhandle, &hum, 0);
 				sprintf(buf_2, "T:%.1f%cC H:%.1f%c  ", temp, 0xDF, hum, 0x25);
 				lcd_str_al(1, 0, buf_2, _left);
-				strcpy(graf_que_var.graf_senzor_name,sen_hum);
-				graf_que_var.graf_hodnota = hum;
-				xQueueSendToBack(graf_queue_handle,&graf_que_var,0);
-				strcpy(graf_que_var.graf_senzor_name,sen_temp);
-				graf_que_var.graf_hodnota = temp;
-				xQueueSendToBack(graf_queue_handle,&graf_que_var,0);
+				ESP_LOGI(TAG,"teplota ---ano ---");
+				xTaskCreate(vHodnoty_na_graf,"poslani hodnot na graf",2200,NULL,2,&HodnotyNaGrafHandle);
 			}
+			else ESP_LOGI(TAG,"teplota ----ne----");
 			time(&now);
 			localtime_r(&now, &timeinfo);
 			strftime(strftime_buf, sizeof(strftime_buf), "%d.%m.%y  %H:%M:%S",
@@ -541,6 +575,8 @@ void app_main()
 //	}
 
 //	my_i2c_config();
+
+
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
 
 	vTaskDelay(10);
@@ -559,8 +595,9 @@ void app_main()
 	nvs_flash_init();
 	mk_wifi_init(WIFI_MODE_STA, mk_got_ip_cb, mk_sta_disconnected_cb, NULL,NULL);
 	mk_sntp_init(SNTP_server);
-
+//	mqtt_config();
 	xQueueSend(graf_queue_handle, &var_reboot_true,0);
+
 
 
 
@@ -584,16 +621,19 @@ void app_main()
 //	xTaskCreate(vPrintTimeToLcd, "print time LCD", 2048, NULL, 2, &PrintTime2LCD);
 	xTaskCreate(hdc1080_read, "cteni temp a hum pravidelne", 400, NULL, 1, &hdc1080Task);
 	xTaskCreate(vPrintToLcd, "Print na LCD", 1600, NULL, 1, &PrintToLcdHandle);
-	xTaskCreate(vPriprava_dat_graf, "priprava dat_pro graf" , 4096, NULL, 1, NULL);
+//	xTaskCreate(vPriprava_dat_graf, "priprava dat_pro graf" , 4096, NULL, 1, NULL);
+//	xTaskCreate(vHodnoty_na_graf,"poslani hodnot na graf",2200,NULL,1,&HodnotyNaGrafHandle);
 
 	while(1){
-		vTaskDelay(100);
+		vTaskDelay(200);
+//		vMQTT_send_message_task(NULL);
 		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());
-		printf("vULP voltage read: %d \n", uxTaskGetStackHighWaterMark(VoltagereadHandle));
-		printf("vULP PPM read: %d \n", uxTaskGetStackHighWaterMark(PPMReadHandle));
-		printf("HDC1080read: %d \n", uxTaskGetStackHighWaterMark(hdc1080Task));
-		printf("Print to lcd: %d \n", uxTaskGetStackHighWaterMark(PrintToLcdHandle));
-		printf("Blikled: %d \n", uxTaskGetStackHighWaterMark(BlikLedMBHandle));
+//		printf("vULP voltage read: %d \n", uxTaskGetStackHighWaterMark(VoltagereadHandle));
+//		printf("vULP PPM read: %d \n", uxTaskGetStackHighWaterMark(PPMReadHandle));
+//		printf("HDC1080read: %d \n", uxTaskGetStackHighWaterMark(hdc1080Task));
+//		printf("Print to lcd: %d \n", uxTaskGetStackHighWaterMark(PrintToLcdHandle));
+//		printf("Blikled: %d \n", uxTaskGetStackHighWaterMark(BlikLedMBHandle));
+//		printf("hodnoty na graf: %d \n", uxTaskGetStackHighWaterMark(HodnotyNaGrafHandle));
 
 
 

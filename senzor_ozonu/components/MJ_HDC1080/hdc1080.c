@@ -24,6 +24,8 @@
 #include "esp_log.h"
 #include "queue.h"
 #include "task.h"
+#include "semphr.h"
+#include "event_groups.h"
 #include "driver/i2c.h"
 #include "hdc1080.h"
 #include "../MK_I2C/mk_i2c.h"
@@ -43,9 +45,10 @@
 //	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
 //}
 
-QueueHandle_t	TempHandle;			//fronta s teplotou
-QueueHandle_t	Humhandle;			//fronta s vlhkosti
-TaskHandle_t	hdc1080Task;		//task pro periodicke nacitani vlhkosti a teploty
+QueueHandle_t		TempHandle;				//fronta s teplotou
+QueueHandle_t		Humhandle;				//fronta s vlhkosti
+EventGroupHandle_t	xEventTemHumHandle; 			//udalost nacteni teploty a vlhkosti
+TaskHandle_t	hdc1080Task;				//task pro periodicke nacitani vlhkosti a teploty
 
 uint16_t swap_uint16(uint16_t swap_num){
 	uint8_t byte_A;
@@ -246,6 +249,7 @@ void hdc1080_read (void *arg){
 	uint16_t delay;
 	TempHandle = xQueueCreate(1,sizeof(float));
 	Humhandle = xQueueCreate(1,sizeof(float));
+	xEventTemHumHandle = xEventGroupCreate();
 	while(1){
 		if(i2c_take_mutex() == ESP_OK){
 //			ESP_LOGI(TAG,"OK nacteni I2C");
@@ -254,9 +258,11 @@ void hdc1080_read (void *arg){
 			hdc1080_measure(&temp, &hum);
 			xQueueSendToBack(TempHandle,&temp,0);
 			xQueueSendToBack(Humhandle,&hum,0);
+//			xEventGroupSetBits(xEventTemHumHandle, (ux_event_hum)|(ux_event_temp));
 //			printf("--------------------temp = %.1f  Hum = %.1f\n",temp,hum);
 			delay = 500;
 			I2C_GIVE_MUTEX_NORET;
+
 		}
 		else {
 			ESP_LOGE(TAG,"chyba nacteni I2C");

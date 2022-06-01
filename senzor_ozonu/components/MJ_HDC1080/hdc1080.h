@@ -21,6 +21,7 @@
 #define MJ_HDC1080_HDC1080_H_
 
 #include "queue.h"
+#include "event_groups.h"
 
 void my_i2c_config();
 
@@ -106,8 +107,16 @@ typedef enum {
 	HumMR_8_bit = 0b10,
 }hum_res;
 
+enum {
+	ux_event_sensor 	= BIT0,
+	ux_event_temp 		= BIT1,
+	ux_event_hum		= BIT2,
+}ux_event_bits;
+
+
 extern QueueHandle_t	TempHandle;			//fronta s teplotou
 extern QueueHandle_t	Humhandle;			//fronta s vlhkosti
+extern EventGroupHandle_t	xEventTemHumHandle; 			//udalost nacteni teploty a vlhkosti
 extern TaskHandle_t		hdc1080Task;		//task pro periodicke nacitani vlhkosti a teploty
 
 uint16_t swap_uint16(uint16_t swap_num);
