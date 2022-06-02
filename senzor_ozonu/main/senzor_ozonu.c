@@ -519,10 +519,10 @@ void vPrintToLcd (void *arg){
 				xQueuePeek(Humhandle, &hum, 0);
 				sprintf(buf_2, "T:%.1f%cC H:%.1f%c  ", temp, 0xDF, hum, 0x25);
 				lcd_str_al(1, 0, buf_2, _left);
-				ESP_LOGI(TAG,"teplota ---ano ---");
-				xTaskCreate(vHodnoty_na_graf,"poslani hodnot na graf",2200,NULL,2,&HodnotyNaGrafHandle);
+//				ESP_LOGI(TAG,"teplota ---ano ---");
+				xTaskCreate(vHodnoty_na_graf,"poslani hodnot na graf",2300,NULL,2,&HodnotyNaGrafHandle);
 			}
-			else ESP_LOGI(TAG,"teplota ----ne----");
+//			else ESP_LOGI(TAG,"teplota ----ne----");
 			time(&now);
 			localtime_r(&now, &timeinfo);
 			strftime(strftime_buf, sizeof(strftime_buf), "%d.%m.%y  %H:%M:%S",
@@ -628,12 +628,12 @@ void app_main()
 		vTaskDelay(200);
 //		vMQTT_send_message_task(NULL);
 		ESP_LOGI("Free Mem:","%d\n", esp_get_free_heap_size());
-//		printf("vULP voltage read: %d \n", uxTaskGetStackHighWaterMark(VoltagereadHandle));
-//		printf("vULP PPM read: %d \n", uxTaskGetStackHighWaterMark(PPMReadHandle));
-//		printf("HDC1080read: %d \n", uxTaskGetStackHighWaterMark(hdc1080Task));
-//		printf("Print to lcd: %d \n", uxTaskGetStackHighWaterMark(PrintToLcdHandle));
-//		printf("Blikled: %d \n", uxTaskGetStackHighWaterMark(BlikLedMBHandle));
-//		printf("hodnoty na graf: %d \n", uxTaskGetStackHighWaterMark(HodnotyNaGrafHandle));
+		printf("vULP voltage read: %d \n", uxTaskGetStackHighWaterMark(VoltagereadHandle));
+		printf("vULP PPM read: %d \n", uxTaskGetStackHighWaterMark(PPMReadHandle));
+		printf("HDC1080read: %d \n", uxTaskGetStackHighWaterMark(hdc1080Task));
+		printf("Print to lcd: %d \n", uxTaskGetStackHighWaterMark(PrintToLcdHandle));
+		printf("Blikled: %d \n", uxTaskGetStackHighWaterMark(BlikLedMBHandle));
+		printf("hodnoty na graf: %d \n", uxTaskGetStackHighWaterMark(HodnotyNaGrafHandle));
 
 
 
