@@ -10,6 +10,7 @@
 
 #include "../ADS_1115/ads_1115.h"
 #include "queue.h"
+#include "event_groups.h"
 
 #define ULP_ADS_address 		ads_i2c_add_0x90				//adresa prevodniku pro ULP
 //vystupy na senzoru
@@ -54,6 +55,11 @@ typedef struct{
 
 uint8_t		PPM_select;
 
+#define uxUlmPresent		BIT0
+#define	uxUlmPrevedeno		BIT1
+#define uxUlmInit			BIT2
+#define uxUlmCalibrate		BIT3
+
 
 extern QueueHandle_t	OzonHandle;
 extern TaskHandle_t		PPMReadHandle;
@@ -70,7 +76,7 @@ float ULP_vypocet_ppm(uint16_t Vref,uint16_t Vgas);
 float ULP_Battery_check();
 float ULP_Battery_check1();
 int8_t ULP_start();
-void ULP_init();
+esp_err_t ULP_init();
 float ULP_Vgas_read_PPM();
 float ULP_linreg(float ppm);
 void hodnoty_na_LCD();

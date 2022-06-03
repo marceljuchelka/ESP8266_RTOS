@@ -118,7 +118,6 @@ void ads_set_gain(uint8_t gain);
 esp_err_t ads_read_volt_single(uint8_t MUX,float * Volt);
 esp_err_t ads_read_volt_cont(float * Volt);
 //void ads_read_config_register();
-int8_t ads_test_address(uint8_t adresa);
 void ads_write_register(uint8_t APR, uint16_t data);
 esp_err_t ads_read_register(uint8_t APR, uint16_t *reg_read);
 void ads_set_mux(uint8_t MUX);
@@ -130,6 +129,7 @@ uint16_t ads_read_single_mux(uint8_t MUX);
 uint16_t ads_read_continual_mux(uint8_t MUX);
 float ads_U_input_single(uint8_t MUX);
 float ads_U_input_cont(uint8_t MUX);
+esp_err_t ads_test_address(uint8_t adresa);
 
 
 extern const float ads_fsr_table[6];

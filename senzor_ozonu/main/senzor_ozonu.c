@@ -75,8 +75,8 @@ QueueHandle_t	graf_queue_handle;
 #define sen_reboot	"reboot"
 #define sen_freemem	"freemem"
 
-#define reboot_TRUE		10
-#define reboot_FALSE	0
+#define reboot_TRUE		90
+#define reboot_FALSE	100
 
 
 
@@ -161,7 +161,7 @@ void v_send_to_web(char *graf_buf){
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             return;
         }
-        ESP_LOGI(TAG, "... allocated socket");
+        ESP_LOGI(TAG, "... allocated socket can name %s num %d", res->ai_canonname, res->ai_socktype);
 
         /* kontrola spojeni   */
         if(connect(s, res->ai_addr, res->ai_addrlen) != 0) {
@@ -496,9 +496,9 @@ void vHodnoty_na_graf(void *arg) {
 
 /* tisk na cely displej vse najednou  */
 void vPrintToLcd (void *arg){
-	const char *TAG = "print na LCD";
+//	const char *TAG = "print na LCD";
 	float ozonPPM = 0, hum, temp;
-	EventBits_t x_bit = 0;
+//	EventBits_t x_bit = 0;
 	time_t	now;
 	uint8_t delay;
 	struct tm	timeinfo = {0};
@@ -578,11 +578,11 @@ void app_main()
 
 
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
-
+	ESP_LOGI("start", "I2c init OK");
 	vTaskDelay(10);
 	ULP_init();
 	vTaskDelay(10);
-	vULP_kalibrace();
+//	vULP_kalibrace();
 	tm_1637_gpio_init();
 	vTaskDelay(10);
 	lcd_init();
@@ -611,7 +611,7 @@ void app_main()
 	/*spusteni tasku  */
 //	xTaskCreate(vPrintFreeMemory, "printfreememory", 4096, NULL, 1, &PrintFreeMemoryHandle);
 //	xTaskCreate(pxTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)
-	xTaskCreate(vULP_VoltageRead, "voltage read", 400, NULL, 1, &VoltagereadHandle);
+	xTaskCreate(vULP_VoltageRead, "voltage read", 2048, NULL, 1, &VoltagereadHandle);
 //	xTaskCreate(vPrintOzonNaLED, "print ozon", 2048, NULL, 1, NULL);
 	xTaskCreate(vBlink_Led2, "blik led2", 1500, NULL, 1,&BlikLedMBHandle );
 	xTaskCreate(vULP_PPM_read, "PPM read", 400, NULL, 1, &PPMReadHandle);

@@ -16,6 +16,7 @@
 #include "esp_log.h"
 #include "esp_task_wdt.h"
 #include "queue.h"
+#include "event_groups.h"
 #include "driver/i2c.h"
 #include "sdkconfig.h"
 #include "math.h"
@@ -28,6 +29,7 @@ ULP_pins_U ULP_pins_U_global;
 
 QueueHandle_t fronta_vzorku_napeti;				//fronta na nacitani hodnot z prevodniku
 QueueHandle_t	OzonHandle;						//aktualni hodnota ozonu
+EventGroupHandle_t	xEventUlpHandle;		//info o stavu ozonoveho senzoru
 
 
 volatile uint8_t ulp_OK = 0, ULP_MUX_FLAG = 0;
@@ -44,20 +46,32 @@ void ULP_set_cont(void *arg){
 
 /* nacitani hodnot ze senzoru  	xTaskCreate(vULP_VoltageRead, "voltage read", 1300, NULL, 1, voltagereadHandle); */
 void vULP_VoltageRead(void *arg){
-//	const char* TAG =  "ULP_voltage read";
+	uint8_t delay = 0;
+	const char* TAG =  "ULP_voltage read";
 	OzonHandle = xQueueCreate(1,sizeof(float));							//aktualni hodnota ozonu
 	fronta_vzorku_napeti = xQueueCreate(5,sizeof(float));				//fronta nacitani hodnot y cidla
 	ULP_set_cont(0);
 	ads_set_mux(ulp_Vgas_read);
 	float volt = 0;
 	while (1) {
+		if(!(xEventGroupGetBits(xEventUlpHandle) &uxUlmCalibrate)){		//neni li kalibrace
+			delay = 100;
+			ULP_init();
+			return;
+		}
 		if (ads_read_volt_cont(&volt) == ESP_OK) {					//nacteni hodnoty s pinu Vgas
 			if (xQueueSendToBack(fronta_vzorku_napeti,&volt,0) != pdTRUE) {
 				vTaskResume(PPMReadHandle);
 			}
-			esp_task_wdt_reset();
-			vTaskDelay(20);
+			delay = 20;
 		}
+		else {
+			xEventGroupClearBits(xEventUlpHandle,uxUlmPresent|uxUlmInit|uxUlmCalibrate);
+			xQueueReset(fronta_vzorku_napeti);
+			ESP_LOGE(TAG, "*** ULP_odpojeno ***");
+			delay = 100;
+		}
+		vTaskDelay(delay);
 	}
 }
 
@@ -79,6 +93,7 @@ void vULP_PPM_read(void *arg) {
 }
 
 esp_err_t vULP_kalibrace(){
+	const char *TAG = "ULP kalibrace";
 	float prumer = 0, napeti = 0;
 	uint8_t opakovani = 5 ;												//, pokusy = 10;
 	ads_bit_set((ADS_MODE),ADS_Single);									//single or Continuous-conversion mode
@@ -93,18 +108,25 @@ esp_err_t vULP_kalibrace(){
 	ULP_pins_U_global.Vgas_U = prumer/5;
 	ULP_pins_U_global.Voffset_U = ULP_pins_U_global.Vref_U - ULP_pins_U_global.Vgas_U;
 	printf("V_gas > %f     V_ref> %f    V_batt> %f  Voffset> %f\n", ULP_pins_U_global.Vgas_U, ULP_pins_U_global.Vref_U, ULP_pins_U_global.Vbatt_U, ULP_pins_U_global.Voffset_U);
-	if(ULP_pins_U_global.Voffset_U > 0.0 ) return ESP_OK;
+	if(ULP_pins_U_global.Voffset_U > 0.0 ) {
+		ESP_LOGI(TAG, "*** kalibrovano ***");
+		xEventGroupSetBits(xEventUlpHandle, uxUlmCalibrate);
+		return ESP_OK;
+	}
 	return ESP_FAIL;
 }
 
 /*inicializace ULP I2C */
-void ULP_init(){															//nastaveni prevodniku s O3 senzorem
+esp_err_t ULP_init(){															//nastaveni prevodniku s O3 senzorem
 	const char* TAG =  "ULP_init";
+	xEventUlpHandle = xEventGroupCreate();
 	uint16_t config_register;
 	float napeti;
 	ads_i2c_address = ULP_ADS_address;
 	if(ads_test_address(ads_i2c_address) == ESP_OK) {									//testovani je li prevodnik
-		ulp_OK = 1;															//prevodnik je na adrese
+		xEventGroupSetBits(xEventUlpHandle, uxUlmPresent);								//odpovida li modul
+		ESP_LOGI(TAG, "*** present ***");
+		ulp_OK = 1;																		//prevodnik je na adrese
 		Buf_Config_register = 0x8583;
 		ads_write_register(ADS_Config_register,Buf_Config_register);						//reset config
 		ads_read_register(ADS_Config_register,&config_register);		//nacte config register do Buf_Config_register
@@ -114,11 +136,17 @@ void ULP_init(){															//nastaveni prevodniku s O3 senzorem
 		ads_read_register(ADS_Config_register,&config_register);
 		ads_read_volt_single(ulp_Vbat_read, &napeti);
 		printf("ADS register2 > 0X %x\n", Buf_Config_register);
+		xEventGroupSetBits(xEventUlpHandle, uxUlmInit);						//probehla inicializace
+		ESP_LOGI(TAG,"*** inicializace ***");
+		if(!(xEventGroupGetBits(xEventUlpHandle) &uxUlmCalibrate)) vULP_kalibrace();	//neni li zkalibrovano zkalibruj
 	}
 	else{
+		xEventGroupClearBits(xEventUlpHandle, uxUlmPresent|uxUlmInit|uxUlmCalibrate);
 		ESP_LOGE(TAG,"modul ULC chybi na adrese %x", ULP_ADS_address);
+		return ESP_FAIL;
 //		printf("modul ULC chybi na adrese %x", ULP_ADS_address);
 	}
+	return ESP_OK;
 }
 
 

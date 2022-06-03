@@ -138,14 +138,16 @@ void ads_set_datarate(uint8_t DR){
 	Buf_Config_register|= ((uint16_t)DR << ADS_DR0);
 	ads_write_register(ADS_Config_register,Buf_Config_register);
 }
-int8_t ads_test_address(uint8_t adresa){
+esp_err_t ads_test_address(uint8_t adresa){
 	esp_err_t ret;
 	i2c_cmd_handle_t cmd;
 	cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);
 	i2c_master_write_byte(cmd, ads_i2c_address | I2C_MASTER_WRITE, I2C_MASTER_NACK);
 	i2c_master_stop(cmd);
+	I2C_TAKE_MUTEX;
 	ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
+	I2C_GIVE_MUTEX;
 //	printf("ret = %d  \n", ret);
 	i2c_cmd_link_delete(cmd);
 	return ret;
