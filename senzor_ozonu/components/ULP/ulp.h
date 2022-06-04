@@ -83,6 +83,7 @@ void hodnoty_na_LCD();
 void vULP_VoltageRead(void *arg);
 void vULP_PPM_read(void *arg);
 esp_err_t vULP_kalibrace();
+esp_err_t ULP_seting();
 
 
 #endif /* ULP_ULP_H_ */

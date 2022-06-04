@@ -69,11 +69,11 @@ QueueHandle_t	graf_queue_handle;
 #define graf_url	"http://"graf_domain
 #define graf_modul "/www/sensor/receive/?module"
 #define graf_user "marcel&sensor["
-#define sen_ozon	"ozon"
-#define sen_temp	"teplota"
-#define sen_hum		"vlhkost"
-#define sen_reboot	"reboot"
-#define sen_freemem	"freemem"
+#define sen_ozon	"ozon_D"
+#define sen_temp	"teplo_D"
+#define sen_hum		"vlhko_D"
+#define sen_reboot	"rebo_D"
+#define sen_freemem	"freem_D"
 
 #define reboot_TRUE		90
 #define reboot_FALSE	100
@@ -549,32 +549,16 @@ void app_main()
 	OzonHandle = xQueueCreate(1,sizeof(float));
 	graf_queue_handle = xQueueCreate(5,sizeof(T_GRAF_VAR));
 	xQueueReset(graf_queue_handle);
-//	T_DATA_STORAGE_FLASH data_storage;
-//	read_data_flash(&data_storage);
-//	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
-//
-//	strcpy(data_storage.wifi_flash.ssid_actual, TEST_SSID);
-//	strcpy(data_storage.wifi_flash.psw_actual, TEST_PASS);
-//	save_data_flash(&data_storage);
-//	printf(" ram SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
-//	spi_flash_erase_sector(0x1FC);
 
-//	T_GRAF_VAR graf_data[5] = {0};
-//	graf_data[0].graf_hodnota = 25;
-//	strcpy(graf_data[0].graf_senzor_name,sen_ozon);
-//	graf_data[1].graf_hodnota = 30;
-//	strcpy(graf_data[1].graf_senzor_name,sen_temp);
-//	graf_data[2].graf_hodnota = 41;
-//	strcpy(graf_data[2].graf_senzor_name,sen_hum);
-//	for(uint8_t i = 0;i<5;i++){
-//		printf("%s  %.1f\n", graf_data[i].graf_senzor_name,graf_data[i].graf_hodnota);
-//	}
-//		web_send_graf(&graf_data[0]);
-//	while(1){
-//		;
-//	}
+	T_DATA_STORAGE_FLASH data_storage;
+	read_data_flash(&data_storage);
+	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
 
-//	my_i2c_config();
+	strcpy(data_storage.wifi_flash.ssid_actual, TEST_SSID);
+	strcpy(data_storage.wifi_flash.psw_actual, TEST_PASS);
+	save_data_flash(&data_storage);
+	printf(" ram SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
+	spi_flash_erase_sector(0x1FC);
 
 
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);

@@ -220,6 +220,8 @@ esp_err_t ads_read_volt_single(uint8_t MUX,float * Volt){
 	return read_error;
 }
 
+
+/* nacitani ze vstupu kontinualne  */
 esp_err_t ads_read_volt_cont(float * Volt){
 	uint16_t reg_read;
 	esp_err_t read_error;
@@ -232,7 +234,7 @@ esp_err_t ads_read_volt_cont(float * Volt){
 	return read_error;
 }
 
-
+/* nastaveni vstupu pro kontinualni cteni   */
 uint16_t ads_read_continual_mux(uint8_t MUX){
 	uint16_t reg_read;
 	ads_read_register(ADS_Conversion_register, &reg_read);
