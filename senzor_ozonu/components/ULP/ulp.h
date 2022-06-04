@@ -53,6 +53,12 @@ typedef struct{
 	uint8_t		PPM_select;			//nastaveni pozadovaneho PPM
 } ULP_VAR_STRUCT;
 
+/* informaci o senzoru k ulozeni na eeprom pri nastaveni. Hlavne Voffset */
+typedef struct{
+	ULP_VAR_STRUCT ulp_factory_eeprom;	//nastaveni parametru senzoru k ulozeni na eeprom
+	ULP_pins_U		ulp_pins_eeprom;
+}ULP_DATA_EEPROM;
+
 uint8_t		PPM_select;
 
 #define uxUlmPresent		BIT0

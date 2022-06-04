@@ -174,7 +174,10 @@ extern uint8_t mk_wifi_scan( uint8_t * assid );
 	extern void mk_sntp_init( char * sntp_srv );
 #endif
 
-
+typedef struct{
+	char ssid_actual[32];
+	char psw_actual[64];
+}T_WIFI_PARAM;
 
 
 #endif /* COMPONENTS_MK_WIFI_MK_WIFI_H_ */

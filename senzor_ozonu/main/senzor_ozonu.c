@@ -104,16 +104,10 @@ typedef struct  {
 	float graf_hodnota;
 } T_GRAF_VAR;
 
-typedef struct{
-	char ssid_actual[15];
-	char psw_actual[15];
-}T_WIFI_PARAM;
 
 
-typedef struct{
-	T_GRAF_VAR data_flash;
-	T_WIFI_PARAM wifi_flash;
-}T_DATA_STORAGE_FLASH;
+
+
 
 const T_GRAF_VAR var_reboot_true = {.graf_senzor_name = sen_reboot,.graf_hodnota = reboot_TRUE};
 const T_GRAF_VAR var_reboot_false = {.graf_senzor_name = sen_reboot,.graf_hodnota = reboot_FALSE};

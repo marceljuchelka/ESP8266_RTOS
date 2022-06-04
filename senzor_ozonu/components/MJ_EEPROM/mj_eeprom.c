@@ -8,7 +8,10 @@
 
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "esp_spi_flash.h"
+#include "mj_eeprom.h"
 #include "sdkconfig.h"
+
+T_DATA_STORAGE_FLASH data_storage;
