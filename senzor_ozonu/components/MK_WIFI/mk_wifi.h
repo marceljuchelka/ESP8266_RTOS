@@ -13,6 +13,8 @@
 #define COMPONENTS_MK_WIFI_MK_WIFI_H_
 
 
+
+
 /*----------------- USTAWIENIA SNTP ----------------------------*/
 
 #define USE_SNTP					1		// 0-do not use SNTP, 1-use SNTP
