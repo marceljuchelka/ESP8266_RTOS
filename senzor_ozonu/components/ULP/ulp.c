@@ -22,6 +22,7 @@
 #include "math.h"
 #include "../ADS_1115/ads_1115.h"
 #include "../ULP/ulp.h"
+#include "../MJ_EEPROM/mj_eeprom.h"
 //#include "ADS_1115/ads_1115.h"
 
 ULP_VAR_STRUCT _ULP_promenne_global = {.M_span = M_span_def,.sens_code = Sens_code_def,.PPM_select = PPM_sel_def};
@@ -37,6 +38,7 @@ volatile uint8_t ulp_OK = 0, ULP_MUX_FLAG = 0;
 /* ******************************************************RTOS  *********************************/
 TaskHandle_t	PPMReadHandle;
 TaskHandle_t 	VoltagereadHandle;
+
 
 
 void ULP_set_cont(void *arg){
@@ -93,6 +95,7 @@ void vULP_PPM_read(void *arg) {
 esp_err_t vULP_kalibrace() {
 	const char *TAG = "ULP kalibrace";
 	float prumer = 0, napeti = 0;
+	T_DATA_STORAGE_FLASH ulozena_data;
 	uint8_t opakovani = 5;										//, pokusy = 10;
 
 	ads_bit_set((ADS_MODE), ADS_Continuous_mode);//single or Continuous-conversion mode
@@ -120,6 +123,9 @@ esp_err_t vULP_kalibrace() {
 	if (ULP_pins_U_global.Voffset_U > 0.0) {
 		ESP_LOGI(TAG, "*** kalibrovano ***");
 		xEventGroupSetBits(xEventUlpHandle, uxUlmCalibrate);
+		read_eeprom(&ulozena_data);
+		ulozena_data.ulp_flash.ulp_pins_eeprom.Voffset_U = ULP_pins_U_global.Voffset_U;
+		write_eeprom(&ulozena_data);
 		return ESP_OK;
 	}
 	return ESP_FAIL;

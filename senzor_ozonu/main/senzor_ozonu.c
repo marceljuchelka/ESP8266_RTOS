@@ -82,22 +82,6 @@ QueueHandle_t	graf_queue_handle;
 
 
 
-//static const char *dotaz =
-//	"GET " graf_url " HTTP/1.0\r\n"
-//    "Host: "graf_url"\r\n"
-//    "User-Agent: esp-idf/1.0 esp32\r\n"
-//    "\r\n";
-
-//const char *req =
-//    "GET "graf_url"\r\n"
-//    "User-Agent: esp-open-rtos/0.1 esp8266\r\n"
-//    "\r\n";
-
-/* parametry pro ukladani dat na flash disk   */
-#define flash_data_base		0x1FC*0x1000		//adresa ulozeni dat
-#define flash_sector_size	0x1000				//velikost sektoru- 4096 Byte
-#define flash_addres 		flash_data_base		//
-
 
 /* nastaveni webu pro zobrazovani grafu na www.vipro.cz */
 typedef struct  {
@@ -433,33 +417,11 @@ void vPrintFreeMemory(void *arg) {
 	}
 }
 
-/* ulozeni dat do flash  */
-void read_data_flash(T_DATA_STORAGE_FLASH *data){
-	esp_err_t esp_error;
-	printf("read sizeof data %d\n", sizeof(*data));
-	esp_error = spi_flash_read(flash_addres, data, sizeof(*data));
-//	vTaskDelay(10);
-	if(esp_error == ESP_OK){
-		printf("read OK\n");
-		ESP_LOGI("read flash","SSID %s  PSW %s\n",data->wifi_flash.ssid_actual,data->wifi_flash.psw_actual);
-	}
-	else printf("read error %s\n", esp_err_to_name(esp_error));
-}
-void save_data_flash(T_DATA_STORAGE_FLASH *data){
-	esp_err_t esp_error;
-	printf("write sizeof data %d\n", sizeof(*data));
-	ESP_LOGI("write flash","SSID %s  PSW %s\n",data->wifi_flash.ssid_actual,data->wifi_flash.psw_actual);
-	spi_flash_erase_sector(0x1FC);
-	esp_error = spi_flash_write(flash_addres, data, sizeof(*data));
-//	vTaskDelay(10);
-	if(esp_error == ESP_OK) printf("save OK\n");
-	else printf ("save error %s\n", esp_err_to_name(esp_error));
-}
+
 
 
 void vHodnoty_na_graf(void *arg) {
 	const char *TAG = "hodnoty na graf";
-	EventBits_t x_bit = 0;
 	T_GRAF_VAR graf_que_var;
 	float ozonPPM = 0, hum = 0, temp = 0;
 	while (1) {
@@ -500,6 +462,7 @@ void vPrintToLcd (void *arg){
 	char strftime_buf[64] = {0};
 
 	char buf_1[17], buf_2[17]; //											buf_3[17], buf_4[17];
+	T_DATA_STORAGE_FLASH ulozena_data;
 
 	while (1) {
 		if (i2c_take_mutex() == ESP_OK) {
@@ -516,6 +479,8 @@ void vPrintToLcd (void *arg){
 				lcd_str_al(1, 0, buf_2, _left);
 //				ESP_LOGI(TAG,"teplota ---ano ---");
 				xTaskCreate(vHodnoty_na_graf,"poslani hodnot na graf",2300,NULL,2,&HodnotyNaGrafHandle);
+				read_eeprom(&ulozena_data);
+				printf("ofset je %0.2f\n",ulozena_data.ulp_flash.ulp_pins_eeprom.Voffset_U);
 			}
 //			else ESP_LOGI(TAG,"teplota ----ne----");
 			time(&now);
@@ -544,17 +509,6 @@ void app_main()
 	OzonHandle = xQueueCreate(1,sizeof(float));
 	graf_queue_handle = xQueueCreate(5,sizeof(T_GRAF_VAR));
 	xQueueReset(graf_queue_handle);
-
-//	T_DATA_STORAGE_FLASH data_storage;
-//	read_data_flash(&data_storage);
-//	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
-//
-//	strcpy(data_storage.wifi_flash.ssid_actual, TEST_SSID);
-//	strcpy(data_storage.wifi_flash.psw_actual, TEST_PASS);
-//	save_data_flash(&data_storage);
-//	printf(" ram SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
-//	spi_flash_erase_sector(0x1FC);
-
 
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
 	ESP_LOGI("start", "I2c init OK");
@@ -599,7 +553,7 @@ void app_main()
 //	xTaskCreate(vText1, "print test 1", 2048, NULL, 2, &PrintTest1);
 //	xTaskCreate(vPrintTimeToLcd, "print time LCD", 2048, NULL, 2, &PrintTime2LCD);
 	xTaskCreate(hdc1080_read, "cteni temp a hum pravidelne", 400, NULL, 1, &hdc1080Task);
-	xTaskCreate(vPrintToLcd, "Print na LCD", 1600, NULL, 1, &PrintToLcdHandle);
+	xTaskCreate(vPrintToLcd, "Print na LCD", 2000, NULL, 1, &PrintToLcdHandle);
 //	xTaskCreate(vPriprava_dat_graf, "priprava dat_pro graf" , 4096, NULL, 1, NULL);
 //	xTaskCreate(vHodnoty_na_graf,"poslani hodnot na graf",2200,NULL,1,&HodnotyNaGrafHandle);
 

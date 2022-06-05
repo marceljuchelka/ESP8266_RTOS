@@ -11,6 +11,8 @@
 
 #ifndef COMPONENTS_MK_WIFI_MK_WIFI_H_
 #define COMPONENTS_MK_WIFI_MK_WIFI_H_
+#include "esp_wifi_types.h"
+
 
 
 /*----------------- USTAWIENIA SNTP ----------------------------*/

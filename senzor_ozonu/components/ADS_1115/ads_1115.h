@@ -9,6 +9,7 @@
 #define ADS_ADS_1115_H_
 #include "esp_err.h"
 
+
 #define I2C_SCL_PIN         	5               /*!< gpio number for I2C master clock */
 #define I2C_SDA_PIN        		4               /*!< gpio number for I2C master data  */
 
