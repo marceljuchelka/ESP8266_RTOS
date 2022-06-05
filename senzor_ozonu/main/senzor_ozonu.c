@@ -545,15 +545,15 @@ void app_main()
 	graf_queue_handle = xQueueCreate(5,sizeof(T_GRAF_VAR));
 	xQueueReset(graf_queue_handle);
 
-	T_DATA_STORAGE_FLASH data_storage;
-	read_data_flash(&data_storage);
-	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
-
-	strcpy(data_storage.wifi_flash.ssid_actual, TEST_SSID);
-	strcpy(data_storage.wifi_flash.psw_actual, TEST_PASS);
-	save_data_flash(&data_storage);
-	printf(" ram SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
-	spi_flash_erase_sector(0x1FC);
+//	T_DATA_STORAGE_FLASH data_storage;
+//	read_data_flash(&data_storage);
+//	printf("SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
+//
+//	strcpy(data_storage.wifi_flash.ssid_actual, TEST_SSID);
+//	strcpy(data_storage.wifi_flash.psw_actual, TEST_PASS);
+//	save_data_flash(&data_storage);
+//	printf(" ram SSID %s  PSW %s\n", data_storage.wifi_flash.ssid_actual, data_storage.wifi_flash.psw_actual);
+//	spi_flash_erase_sector(0x1FC);
 
 
 	i2c_init(I2C_NUM_0, I2C_SCL_PIN, I2C_SDA_PIN);
