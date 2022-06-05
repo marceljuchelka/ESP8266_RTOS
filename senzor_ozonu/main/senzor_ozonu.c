@@ -45,6 +45,7 @@
 //#include "../components/MK_WIFI/mk_wifi.h"
 #include "../components/MK_WIFI/mk_wifi.h"
 #include "../components/MJ_MQTT/mj_mqtt.h"
+#include "../components/MJ_EEPROM/mj_eeprom.h"
 
 #define MB_LED	GPIO_NUM_2
 
